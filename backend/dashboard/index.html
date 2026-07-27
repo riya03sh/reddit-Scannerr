@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reddit Scanner — Dashboard</title>
+<style>
+  :root {
+    --purple: #5B2C87;
+    --purple-dark: #3D1D5C;
+    --purple-light: #F3EEF9;
+    --ink: #1A1523;
+    --grey: #6B6478;
+    --border: #E4DEEE;
+    --green: #1B7A43;
+    --amber: #B4740E;
+    --red: #B4341E;
+    --bg: #FBFAFC;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Inter, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+  }
+  header {
+    background: var(--purple);
+    color: white;
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  header h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.02em; }
+  header .sub { font-size: 13px; opacity: 0.85; margin-top: 2px; }
+  .controls {
+    display: flex; gap: 12px; align-items: center;
+  }
+  select, button {
+    font-family: inherit;
+    font-size: 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    padding: 8px 12px;
+  }
+  select { background: white; color: var(--ink); min-width: 200px; }
+  .api-base-input {
+    font-size: 12px; padding: 6px 10px; width: 220px; color: var(--grey);
+  }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 32px 60px; }
+  .tabs {
+    display: flex; gap: 4px; margin-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab {
+    padding: 10px 18px; cursor: pointer; font-size: 14px; font-weight: 600;
+    color: var(--grey); border-bottom: 2px solid transparent; user-select: none;
+  }
+  .tab.active { color: var(--purple); border-bottom-color: var(--purple); }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .card {
+    background: white; border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px 18px; margin-bottom: 12px;
+  }
+  .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .card-title { font-weight: 600; font-size: 15px; margin: 0 0 4px; }
+  .card-meta { font-size: 12px; color: var(--grey); }
+  .score-pill {
+    font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 100px;
+    white-space: nowrap;
+  }
+  .score-high { background: #E6F4EA; color: var(--green); }
+  .score-mid { background: #FCF1DD; color: var(--amber); }
+  .score-low { background: #F5E9E7; color: var(--red); }
+  .card-body { font-size: 13.5px; color: #3A3345; margin-top: 8px; line-height: 1.5; }
+  .reasoning {
+    font-size: 12.5px; color: var(--grey); margin-top: 8px; font-style: italic;
+    border-left: 2px solid var(--border); padding-left: 10px;
+  }
+  .card-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .card-actions button {
+    background: var(--purple-light); color: var(--purple-dark); border: none;
+    font-size: 12px; font-weight: 600; cursor: pointer; padding: 6px 12px;
+  }
+  .card-actions button:hover { background: #E5D9F1; }
+  .status-badge {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
+    padding: 3px 8px; border-radius: 4px;
+  }
+  .status-new { background: #EAF1FB; color: #1E5FA8; }
+  .status-reviewed { background: #FCF1DD; color: var(--amber); }
+  .status-contacted { background: #E6F4EA; color: var(--green); }
+  .status-dismissed { background: #EFEFEF; color: var(--grey); }
+  .empty {
+    text-align: center; padding: 60px 20px; color: var(--grey);
+  }
+  .empty h3 { color: var(--ink); margin-bottom: 6px; }
+  a { color: var(--purple); }
+  .footer-note {
+    margin-top: 30px; font-size: 12px; color: var(--grey); text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Reddit Scanner</h1>
+    <div class="sub">Internal review dashboard</div>
+  </div>
+  <div class="controls">
+    <input class="api-base-input" id="apiBase" value="http://127.0.0.1:8000" title="Backend URL" />
+    <select id="companySelect"><option>Loading companies…</option></select>
+  </div>
+</header>
+
+<main>
+  <div class="tabs">
+    <div class="tab active" data-tab="content">Content Digest</div>
+    <div class="tab" data-tab="leads">Leads</div>
+  </div>
+
+  <div class="panel active" id="panel-content">
+    <div id="contentList"></div>
+  </div>
+
+  <div class="panel" id="panel-leads">
+    <div id="leadsList"></div>
+  </div>
+
+  <div class="footer-note">Reddit Scanner MVP — data source configurable via backend DATA_SOURCE setting (mock / arctic_shift / reddit)</div>
+</main>
+
+<script>
+let currentCompanyId = null;
+
+function apiBase() { return document.getElementById('apiBase').value.replace(/\/$/, ''); }
+
+function scoreClass(score) {
+  if (score >= 70) return 'score-high';
+  if (score >= 40) return 'score-mid';
+  return 'score-low';
+}
+
+function timeAgo(iso) {
+  const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+  return Math.floor(diff / 86400) + 'd ago';
+}
+
+async function loadCompanies() {
+  const select = document.getElementById('companySelect');
+  try {
+    const res = await fetch(`${apiBase()}/api/companies`);
+    const companies = await res.json();
+    if (!companies.length) {
+      select.innerHTML = '<option>No companies yet — add one in Supabase</option>';
+      return;
+    }
+    select.innerHTML = companies.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    currentCompanyId = companies[0].id;
+    select.onchange = (e) => { currentCompanyId = e.target.value; loadAll(); };
+    loadAll();
+  } catch (e) {
+    select.innerHTML = '<option>Backend unreachable — check URL above</option>';
+  }
+}
+
+async function loadContentMatches() {
+  const container = document.getElementById('contentList');
+  if (!currentCompanyId) return;
+  container.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const res = await fetch(`${apiBase()}/api/matches?company_id=${currentCompanyId}`);
+    const matches = await res.json();
+    if (!matches.length) {
+      container.innerHTML = `<div class="empty"><h3>No matches yet</h3>Run <code>python -m workers.ingest</code> to populate this from your configured subreddits.</div>`;
+      return;
+    }
+    container.innerHTML = matches.map(m => {
+      const post = m.posts || {};
+      return `
+        <div class="card">
+          <div class="card-top">
+            <div>
+              <p class="card-title">${post.title || '(untitled)'}</p>
+              <div class="card-meta">r/${post.subreddit || '?'} · u/${post.author_username || 'unknown'} · ${post.created_at ? timeAgo(post.created_at) : ''}</div>
+            </div>
+            <span class="score-pill ${scoreClass(m.intent_score)}">${m.intent_score}/100</span>
+          </div>
+          <div class="reasoning">${m.ai_reasoning || ''}</div>
+          <div class="card-actions">
+            ${post.url ? `<a href="${post.url}" target="_blank"><button>View on Reddit</button></a>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+  } catch (e) {
+    container.innerHTML = '<div class="empty">Could not load matches — check backend connection.</div>';
+  }
+}
+
+async function loadLeads() {
+  const container = document.getElementById('leadsList');
+  if (!currentCompanyId) return;
+  container.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const res = await fetch(`${apiBase()}/api/leads?company_id=${currentCompanyId}`);
+    const leads = await res.json();
+    if (!leads.length) {
+      container.innerHTML = `<div class="empty"><h3>No leads yet</h3>Leads appear here once a competitor-mode scanner_config picks up switch-intent signal.</div>`;
+      return;
+    }
+    container.innerHTML = leads.map(l => `
+      <div class="card">
+        <div class="card-top">
+          <div>
+            <p class="card-title">u/${l.reddit_username}</p>
+            <div class="card-meta">
+              First seen ${timeAgo(l.first_seen)} · Last seen ${timeAgo(l.last_seen)}
+              &nbsp;<span class="status-badge status-${l.status}">${l.status}</span>
+            </div>
+          </div>
+          <span class="score-pill ${scoreClass(l.aggregate_score)}">${l.aggregate_score}/100</span>
+        </div>
+        <div class="card-actions">
+          <button onclick="updateStatus('${l.id}', 'reviewed')">Mark reviewed</button>
+          <button onclick="updateStatus('${l.id}', 'contacted')">Mark contacted</button>
+          <button onclick="updateStatus('${l.id}', 'dismissed')">Dismiss</button>
+          <button onclick="viewSignals('${l.id}')">View signals</button>
+        </div>
+        <div id="signals-${l.id}"></div>
+      </div>
+    `).join('');
+  } catch (e) {
+    container.innerHTML = '<div class="empty">Could not load leads — check backend connection.</div>';
+  }
+}
+
+async function updateStatus(leadId, status) {
+  await fetch(`${apiBase()}/api/leads/${leadId}/status?status=${status}`, { method: 'PATCH' });
+  loadLeads();
+}
+
+async function viewSignals(leadId) {
+  const target = document.getElementById(`signals-${leadId}`);
+  if (target.innerHTML) { target.innerHTML = ''; return; }
+  const res = await fetch(`${apiBase()}/api/leads/${leadId}/signals`);
+  const signals = await res.json();
+  target.innerHTML = signals.map(s => {
+    const post = s.posts || {};
+    return `<div class="reasoning" style="margin-top:10px;">
+      <strong>${s.competitor_mentioned}</strong> — ${s.pain_point || ''}<br>
+      "${post.title || ''}" ${post.url ? `<a href="${post.url}" target="_blank">↗</a>` : ''}
+    </div>`;
+  }).join('') || '<div class="card-meta" style="margin-top:8px;">No signals found.</div>';
+}
+
+function loadAll() {
+  loadContentMatches();
+  loadLeads();
+}
+
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.onclick = () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(`panel-${tab.dataset.tab}`).classList.add('active');
+  };
+});
+
+document.getElementById('apiBase').addEventListener('change', loadCompanies);
+loadCompanies();
+</script>
+
+</body>
+</html>
