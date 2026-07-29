@@ -2,12 +2,30 @@ import json
 from functools import lru_cache
 import google.generativeai as genai
 from config import settings
+import time
+from google.api_core.exceptions import ResourceExhausted
 
+def _call(prompt: str) -> dict:
+    model = get_model()
+    for attempt in range(3):
+        try:
+            response = model.generate_content(prompt)
+            break
+        except ResourceExhausted as e:
+            wait = 30  # free tier resets quickly; safe fixed backoff
+            print(f"Gemini rate limit hit, waiting {wait}s before retry ({attempt+1}/3)...")
+            time.sleep(wait)
+    else:
+        raise RuntimeError("Gemini rate limit exceeded after 3 retries")
+
+    text = response.text.strip()
+    text = text.replace("```json", "").replace("```", "").strip()
+    return json.loads(text)
 
 @lru_cache
 def get_model():
     genai.configure(api_key=settings.gemini_api_key)
-    return genai.GenerativeModel("gemini-1.5-flash")
+    return genai.GenerativeModel("gemini-3.5-flash-lite")
 
 
 CONTENT_MODE_PROMPT = """You are scoring a Reddit post for genuine buying intent relevant to a business.

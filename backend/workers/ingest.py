@@ -13,11 +13,26 @@ Later this gets wrapped in an APScheduler job (Phase 2).
 from datetime import datetime, timezone
 
 from services.supabase_client import get_supabase
-from services.reddit_client import fetch_new_posts
 from services.prefilter import matches_keywords, matches_competitors
 from services.gemini_client import classify_content_mode, classify_competitor_mode
+from config import settings
+import time
 
 
+def _get_fetch_function():
+    """Selects the post-fetching backend based on config.data_source.
+    Swap this one setting once Reddit API approval comes through - no other
+    code in this file needs to change."""
+    if settings.data_source == "reddit":
+        from services.reddit_client import fetch_new_posts
+    elif settings.data_source == "arctic_shift":
+        from services.arctic_shift_client import fetch_new_posts
+    else:
+        from services.mock_client import fetch_new_posts
+    return fetch_new_posts
+
+
+fetch_new_posts = _get_fetch_function()
 def _upsert_post(sb, post: dict) -> str:
     """Insert post if new, return its Supabase row id (post_id)."""
     existing = sb.table("posts").select("id").eq("reddit_id", post["reddit_id"]).execute()
@@ -39,7 +54,7 @@ def _upsert_post(sb, post: dict) -> str:
 
 def run_content_mode(sb, config: dict, company: dict):
     for subreddit in config["subreddits"]:
-        posts = fetch_new_posts(subreddit, limit=25)
+        posts = fetch_new_posts(subreddit, limit=100)
         for post in posts:
             if not matches_keywords(post["title"], post["body"], config["keywords"]):
                 continue
@@ -57,7 +72,7 @@ def run_content_mode(sb, config: dict, company: dict):
                 title=post["title"],
                 body=post["body"],
             )
-
+            time.sleep(4)
             if result["intent_score"] / 100 >= config["min_score_threshold"]:
                 sb.table("content_matches").insert({
                     "post_id": post_id,
@@ -70,7 +85,7 @@ def run_content_mode(sb, config: dict, company: dict):
 
 def run_competitor_mode(sb, config: dict, company: dict):
     for subreddit in config["subreddits"]:
-        posts = fetch_new_posts(subreddit, limit=25)
+        posts = fetch_new_posts(subreddit, limit=100)
         for post in posts:
             if not matches_competitors(post["title"], post["body"], config["competitors"]):
                 continue
@@ -86,7 +101,8 @@ def run_competitor_mode(sb, config: dict, company: dict):
                 title=post["title"],
                 body=post["body"],
             )
-
+            time.sleep(4)
+            
             if not result["competitor_mentioned"]:
                 continue  # Gemini decided it wasn't actually relevant despite keyword match
 
