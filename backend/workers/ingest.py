@@ -14,10 +14,15 @@ from datetime import datetime, timezone
 
 from services.supabase_client import get_supabase
 from services.prefilter import matches_keywords, matches_competitors
-from services.gemini_client import classify_content_mode, classify_competitor_mode
 from config import settings
 import time
 
+if settings.llm_provider == "ollama":
+    from services.ollama_client import classify_content_mode, classify_competitor_mode
+elif settings.llm_provider == "groq":
+    from services.groq_client import classify_content_mode, classify_competitor_mode
+else:
+    from services.gemini_client import classify_content_mode, classify_competitor_mode
 
 def _get_fetch_function():
     """Selects the post-fetching backend based on config.data_source.

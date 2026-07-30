@@ -16,6 +16,11 @@ class Settings(BaseSettings):
     environment: str = "development"
     data_source: str = "mock"
 
+    llm_provider: str = "gemini"
+    groq_api_key: str = ""
+    groq_model: str = "llama-3.1-8b-instant"
+    ollama_model: str = "llama3.1"
+
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",
         env_file_encoding="utf-8",
