@@ -16,7 +16,7 @@ Later this gets wrapped in an APScheduler job (Phase 2).
 from datetime import datetime, timezone
 
 from services.supabase_client import get_supabase
-from services.prefilter import matches_keywords
+from services.prefilter import matches_keywords, matches_competitor_signal
 from config import settings
 import time
 
@@ -92,15 +92,18 @@ def run_content_mode(sb, config: dict, company: dict):
 
 
 def run_competitor_mode(sb, config: dict, company: dict):
-    # No keyword pre-filter here (unlike content mode): competitor-mode configs cover
-    # far fewer subreddits, so the volume can absorb sending every post straight to the
-    # LLM. This catches misspellings and indirect complaints that literal matching on
-    # `config["competitors"]` would miss.
+    # Pre-filtered on competitor names OR switching language (see
+    # prefilter.matches_competitor_signal). Sending every post to the LLM - the
+    # original design - burned the entire Groq free-tier daily token budget in a
+    # single 200-post run on the 70B model.
     for subreddit in config["subreddits"]:
         posts = fetch_new_posts(subreddit, limit=100)
         for post in posts:
             if not post["author_username"]:
                 continue  # can't attribute a lead without a username
+
+            if not matches_competitor_signal(post["title"], post["body"], config["competitors"]):
+                continue
 
             # Store the post and record the check BEFORE classifying. Unlike content
             # mode - which can dedupe off content_matches because every classified post
