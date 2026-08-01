@@ -80,7 +80,7 @@ def run_content_mode(sb, config: dict, company: dict):
                 title=post["title"],
                 body=post["body"],
             )
-            time.sleep(4)
+            time.sleep(settings.llm_request_interval_seconds)
             if result["intent_score"] / 100 >= config["min_score_threshold"]:
                 sb.table("content_matches").insert({
                     "post_id": post_id,
@@ -102,6 +102,22 @@ def run_competitor_mode(sb, config: dict, company: dict):
             if not post["author_username"]:
                 continue  # can't attribute a lead without a username
 
+            # Store the post and record the check BEFORE classifying. Unlike content
+            # mode - which can dedupe off content_matches because every classified post
+            # leaves a row - competitor mode discards negatives, so without its own
+            # ledger every scheduled run would re-send the same posts to the LLM
+            # forever. competitor_checks is that ledger.
+            post_id = _upsert_post(sb, post)
+            already = (
+                sb.table("competitor_checks")
+                .select("id")
+                .eq("config_id", config["id"])
+                .eq("post_id", post_id)
+                .execute()
+            )
+            if already.data:
+                continue
+
             result = classify_competitor_mode(
                 company_name=company["name"],
                 product_description=company["product_description"] or "",
@@ -109,12 +125,15 @@ def run_competitor_mode(sb, config: dict, company: dict):
                 title=post["title"],
                 body=post["body"],
             )
-            time.sleep(4)
+            time.sleep(settings.llm_request_interval_seconds)
+
+            sb.table("competitor_checks").insert({
+                "config_id": config["id"],
+                "post_id": post_id,
+            }).execute()
 
             if not result["competitor_mentioned"]:
                 continue  # no competitor signal in this post - don't bother storing it
-
-            post_id = _upsert_post(sb, post)
 
             # upsert lead
             existing_lead = sb.table("leads").select("*").eq("reddit_username", post["author_username"]).eq("company_id", company["id"]).execute()

@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     groq_competitor_model: str = "llama-3.3-70b-versatile"
     ollama_model: str = "llama3.1"
 
+    # Gap between LLM calls in the ingestion worker, to stay under free-tier
+    # rate limits. Groq allows 30 req/min (2s is enough); Gemini's free tier is
+    # slower and wants ~4s. Local Ollama needs no throttle at all.
+    llm_request_interval_seconds: float = 2.0
+
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",
         env_file_encoding="utf-8",

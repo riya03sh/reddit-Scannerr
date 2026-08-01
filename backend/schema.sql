@@ -80,6 +80,19 @@ create table if not exists lead_signals (
 
 create index if not exists idx_lead_signals_lead on lead_signals(lead_id);
 
+-- Competitor-mode dedupe ledger. Competitor mode discards posts with no competitor
+-- signal, so there's no row to dedupe against the way content_matches serves content
+-- mode - every scheduled run would otherwise re-classify the same posts indefinitely.
+create table if not exists competitor_checks (
+    id uuid primary key default uuid_generate_v4(),
+    config_id uuid not null references scanner_configs(id) on delete cascade,
+    post_id uuid not null references posts(id) on delete cascade,
+    checked_at timestamptz not null default now(),
+    unique(config_id, post_id)
+);
+
+create index if not exists idx_competitor_checks_config on competitor_checks(config_id);
+
 -- ---------- Auth: associate a company with the Supabase Auth user who owns it ----------
 -- Run this in the Supabase SQL editor against an existing database to add
 -- customer signup/auth support. Nullable + a plain unique index (not a NOT NULL
