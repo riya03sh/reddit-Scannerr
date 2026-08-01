@@ -1,0 +1,9 @@
+{
+  "builds": [
+    { "src": "backend/ui/**", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/", "dest": "/backend/ui/onboarding.html" },
+    { "src": "/(.*)", "dest": "/backend/ui/$1" }
+  ]
+}
