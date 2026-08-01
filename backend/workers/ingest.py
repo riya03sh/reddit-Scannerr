@@ -3,8 +3,11 @@ Phase 1-2 ingestion worker.
 
 For every active scanner_config:
   1. Pull new posts from its configured subreddits
-  2. Pre-filter by keyword (content mode) or competitor mention (competitor mode)
-  3. Classify surviving posts with Gemini
+  2. Content mode: pre-filter by keyword before classifying (keeps API volume down
+     on high-traffic subreddits). Competitor mode: no pre-filter - every post goes
+     to the LLM directly, since competitor-mode configs cover fewer subreddits and
+     literal keyword matching misses misspellings/indirect references.
+  3. Classify surviving posts with the configured LLM provider
   4. Store post + classification result
 
 Run manually for now: python -m workers.ingest
@@ -13,7 +16,7 @@ Later this gets wrapped in an APScheduler job (Phase 2).
 from datetime import datetime, timezone
 
 from services.supabase_client import get_supabase
-from services.prefilter import matches_keywords, matches_competitors
+from services.prefilter import matches_keywords
 from config import settings
 import time
 
@@ -89,15 +92,15 @@ def run_content_mode(sb, config: dict, company: dict):
 
 
 def run_competitor_mode(sb, config: dict, company: dict):
+    # No keyword pre-filter here (unlike content mode): competitor-mode configs cover
+    # far fewer subreddits, so the volume can absorb sending every post straight to the
+    # LLM. This catches misspellings and indirect complaints that literal matching on
+    # `config["competitors"]` would miss.
     for subreddit in config["subreddits"]:
         posts = fetch_new_posts(subreddit, limit=100)
         for post in posts:
-            if not matches_competitors(post["title"], post["body"], config["competitors"]):
-                continue
             if not post["author_username"]:
                 continue  # can't attribute a lead without a username
-
-            post_id = _upsert_post(sb, post)
 
             result = classify_competitor_mode(
                 company_name=company["name"],
@@ -107,9 +110,11 @@ def run_competitor_mode(sb, config: dict, company: dict):
                 body=post["body"],
             )
             time.sleep(4)
-            
+
             if not result["competitor_mentioned"]:
-                continue  # Gemini decided it wasn't actually relevant despite keyword match
+                continue  # no competitor signal in this post - don't bother storing it
+
+            post_id = _upsert_post(sb, post)
 
             # upsert lead
             existing_lead = sb.table("leads").select("*").eq("reddit_username", post["author_username"]).eq("company_id", company["id"]).execute()

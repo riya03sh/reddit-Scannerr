@@ -13,9 +13,13 @@
     --grey: #6B6478;
     --border: #E4DEEE;
     --green: #1B7A43;
+    --green-bg: #E6F4EA;
     --amber: #B4740E;
+    --amber-bg: #FCF1DD;
     --red: #B4341E;
+    --red-bg: #F5E9E7;
     --bg: #FBFAFC;
+    --track: #EDE7F4;
   }
   * { box-sizing: border-box; }
   body {
@@ -27,32 +31,36 @@
   header {
     background: var(--purple);
     color: white;
-    padding: 20px 32px;
+    padding: 18px 32px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 20;
   }
   header h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.02em; }
   header .sub { font-size: 13px; opacity: 0.85; margin-top: 2px; }
   .controls {
     display: flex; gap: 12px; align-items: center;
   }
-  select, button {
+  select, button, input[type=text] {
     font-family: inherit;
     font-size: 14px;
     border-radius: 6px;
     border: 1px solid var(--border);
     padding: 8px 12px;
   }
-  select { background: white; color: var(--ink); min-width: 200px; }
+  select, input[type=text] { background: white; color: var(--ink); }
+  #companySelect { min-width: 180px; }
   .api-base-input {
-    font-size: 12px; padding: 6px 10px; width: 220px; color: var(--grey);
+    font-size: 12px; padding: 6px 10px; width: 200px; color: var(--grey);
   }
   main { max-width: 1100px; margin: 0 auto; padding: 24px 32px 60px; }
   .tabs {
-    display: flex; gap: 4px; margin-bottom: 20px;
+    display: flex; gap: 4px; margin-bottom: 4px;
     border-bottom: 1px solid var(--border);
   }
   .tab {
@@ -62,38 +70,72 @@
   .tab.active { color: var(--purple); border-bottom-color: var(--purple); }
   .panel { display: none; }
   .panel.active { display: block; }
+
+  .toolbar {
+    position: sticky; top: 65px; z-index: 10; background: var(--bg);
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 14px 0 12px; border-bottom: 1px solid var(--border); margin-bottom: 14px;
+  }
+  .toolbar .search { flex: 1 1 200px; min-width: 160px; }
+  .toolbar .field-group { display: flex; align-items: center; gap: 6px; }
+  .toolbar label { font-size: 12px; color: var(--grey); font-weight: 600; white-space: nowrap; }
+  .toolbar select { padding: 7px 10px; font-size: 13px; }
+  .chip-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip {
+    font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 100px;
+    border: 1px solid var(--border); background: white; color: var(--grey); cursor: pointer;
+    user-select: none; white-space: nowrap;
+  }
+  .chip:hover { border-color: var(--purple); color: var(--purple); }
+  .chip.active { background: var(--purple); border-color: var(--purple); color: white; }
+  .result-count { font-size: 12px; color: var(--grey); margin-left: auto; white-space: nowrap; }
+
   .card {
     background: white; border: 1px solid var(--border); border-radius: 10px;
-    padding: 16px 18px; margin-bottom: 12px;
+    padding: 16px 18px; margin-bottom: 12px; transition: box-shadow 0.15s, opacity 0.15s;
   }
+  .card:hover { box-shadow: 0 2px 10px rgba(91,44,135,0.08); }
+  .card.is-pending { opacity: 0.55; }
   .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
   .card-title { font-weight: 600; font-size: 15px; margin: 0 0 4px; }
   .card-meta { font-size: 12px; color: var(--grey); }
+  .score-wrap { text-align: right; min-width: 74px; }
   .score-pill {
     font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 100px;
-    white-space: nowrap;
+    white-space: nowrap; display: inline-block;
   }
-  .score-high { background: #E6F4EA; color: var(--green); }
-  .score-mid { background: #FCF1DD; color: var(--amber); }
-  .score-low { background: #F5E9E7; color: var(--red); }
+  .score-high { background: var(--green-bg); color: var(--green); }
+  .score-mid { background: var(--amber-bg); color: var(--amber); }
+  .score-low { background: var(--red-bg); color: var(--red); }
+  .meter-track {
+    height: 4px; border-radius: 2px; background: var(--track); width: 100%;
+    overflow: hidden; margin-top: 6px;
+  }
+  .meter-fill { height: 100%; border-radius: 2px; }
+  .meter-fill.score-high { background: var(--green); }
+  .meter-fill.score-mid { background: var(--amber); }
+  .meter-fill.score-low { background: var(--red); }
   .card-body { font-size: 13.5px; color: #3A3345; margin-top: 8px; line-height: 1.5; }
   .reasoning {
     font-size: 12.5px; color: var(--grey); margin-top: 8px; font-style: italic;
     border-left: 2px solid var(--border); padding-left: 10px;
   }
-  .card-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .card-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
   .card-actions button {
     background: var(--purple-light); color: var(--purple-dark); border: none;
     font-size: 12px; font-weight: 600; cursor: pointer; padding: 6px 12px;
   }
   .card-actions button:hover { background: #E5D9F1; }
+  .card-actions button:disabled { opacity: 0.5; cursor: default; }
+  .card-actions button.is-current { background: var(--purple); color: white; }
+  .inline-error { font-size: 12px; color: var(--red); font-weight: 600; }
   .status-badge {
     font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
     padding: 3px 8px; border-radius: 4px;
   }
   .status-new { background: #EAF1FB; color: #1E5FA8; }
-  .status-reviewed { background: #FCF1DD; color: var(--amber); }
-  .status-contacted { background: #E6F4EA; color: var(--green); }
+  .status-reviewed { background: var(--amber-bg); color: var(--amber); }
+  .status-contacted { background: var(--green-bg); color: var(--green); }
   .status-dismissed { background: #EFEFEF; color: var(--grey); }
   .empty {
     text-align: center; padding: 60px 20px; color: var(--grey);
@@ -103,6 +145,7 @@
   .footer-note {
     margin-top: 30px; font-size: 12px; color: var(--grey); text-align: center;
   }
+  .signals-block { margin-top: 10px; border-top: 1px dashed var(--border); padding-top: 10px; }
 </style>
 </head>
 <body>
@@ -114,6 +157,7 @@
   </div>
   <div class="controls">
     <input class="api-base-input" id="apiBase" value="http://127.0.0.1:8000" title="Backend URL" />
+    <input class="api-base-input" id="accessToken" placeholder="Access token (from onboarding)" title="Supabase access token" />
     <select id="companySelect"><option>Loading companies…</option></select>
   </div>
 </header>
@@ -125,10 +169,45 @@
   </div>
 
   <div class="panel active" id="panel-content">
+    <div class="toolbar">
+      <input class="search" type="text" id="contentSearch" placeholder="Search title, subreddit, reasoning…" />
+      <div class="field-group">
+        <label for="contentSort">Sort</label>
+        <select id="contentSort">
+          <option value="score-desc">Score: high → low</option>
+          <option value="score-asc">Score: low → high</option>
+          <option value="date-desc">Newest first</option>
+          <option value="date-asc">Oldest first</option>
+        </select>
+      </div>
+      <span class="result-count" id="contentCount"></span>
+    </div>
     <div id="contentList"></div>
   </div>
 
   <div class="panel" id="panel-leads">
+    <div class="toolbar">
+      <input class="search" type="text" id="leadsSearch" placeholder="Search username…" />
+      <div class="field-group">
+        <label for="leadsSort">Sort</label>
+        <select id="leadsSort">
+          <option value="score-desc">Score: high → low</option>
+          <option value="score-asc">Score: low → high</option>
+          <option value="lastseen-desc">Last seen: newest</option>
+          <option value="firstseen-desc">First seen: newest</option>
+        </select>
+      </div>
+      <span class="result-count" id="leadsCount"></span>
+    </div>
+    <div class="toolbar" style="padding-top:0; border-bottom:none; margin-bottom:6px;">
+      <div class="chip-row" id="leadsStatusFilter">
+        <div class="chip active" data-status="all">All</div>
+        <div class="chip" data-status="new">New</div>
+        <div class="chip" data-status="reviewed">Reviewed</div>
+        <div class="chip" data-status="contacted">Contacted</div>
+        <div class="chip" data-status="dismissed">Dismissed</div>
+      </div>
+    </div>
     <div id="leadsList"></div>
   </div>
 
@@ -137,8 +216,27 @@
 
 <script>
 let currentCompanyId = null;
+let allMatches = [];
+let allLeads = [];
+let leadsStatusFilter = 'all';
+const openSignalPanels = new Set();
+
+const LS_TOKEN = 'reddit_scanner_access_token';
 
 function apiBase() { return document.getElementById('apiBase').value.replace(/\/$/, ''); }
+function getToken() { return document.getElementById('accessToken').value.trim(); }
+function authHeaders() {
+  const token = getToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+// Onboarding writes its token to the same localStorage key - pick it up automatically.
+const savedToken = localStorage.getItem(LS_TOKEN);
+if (savedToken) document.getElementById('accessToken').value = savedToken;
+document.getElementById('accessToken').addEventListener('change', (e) => {
+  localStorage.setItem(LS_TOKEN, e.target.value.trim());
+  loadCompanies();
+});
 
 function scoreClass(score) {
   if (score >= 70) return 'score-high';
@@ -153,13 +251,31 @@ function timeAgo(iso) {
   return Math.floor(diff / 86400) + 'd ago';
 }
 
+function scoreMeter(score) {
+  const cls = scoreClass(score);
+  const pct = Math.max(0, Math.min(100, score));
+  return `
+    <div class="score-wrap">
+      <span class="score-pill ${cls}">${score}/100</span>
+      <div class="meter-track"><div class="meter-fill ${cls}" style="width:${pct}%"></div></div>
+    </div>`;
+}
+
 async function loadCompanies() {
   const select = document.getElementById('companySelect');
+  if (!getToken()) {
+    select.innerHTML = '<option>Paste an access token above (see onboarding.html)</option>';
+    return;
+  }
   try {
-    const res = await fetch(`${apiBase()}/api/companies`);
+    const res = await fetch(`${apiBase()}/api/companies`, { headers: authHeaders() });
+    if (res.status === 401) {
+      select.innerHTML = '<option>Session expired — log in again via onboarding.html</option>';
+      return;
+    }
     const companies = await res.json();
     if (!companies.length) {
-      select.innerHTML = '<option>No companies yet — add one in Supabase</option>';
+      select.innerHTML = '<option>No companies yet — finish onboarding.html first</option>';
       return;
     }
     select.innerHTML = companies.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
@@ -176,32 +292,65 @@ async function loadContentMatches() {
   if (!currentCompanyId) return;
   container.innerHTML = '<div class="empty">Loading…</div>';
   try {
-    const res = await fetch(`${apiBase()}/api/matches?company_id=${currentCompanyId}`);
-    const matches = await res.json();
-    if (!matches.length) {
-      container.innerHTML = `<div class="empty"><h3>No matches yet</h3>Run <code>python -m workers.ingest</code> to populate this from your configured subreddits.</div>`;
-      return;
-    }
-    container.innerHTML = matches.map(m => {
-      const post = m.posts || {};
-      return `
-        <div class="card">
-          <div class="card-top">
-            <div>
-              <p class="card-title">${post.title || '(untitled)'}</p>
-              <div class="card-meta">r/${post.subreddit || '?'} · u/${post.author_username || 'unknown'} · ${post.created_at ? timeAgo(post.created_at) : ''}</div>
-            </div>
-            <span class="score-pill ${scoreClass(m.intent_score)}">${m.intent_score}/100</span>
-          </div>
-          <div class="reasoning">${m.ai_reasoning || ''}</div>
-          <div class="card-actions">
-            ${post.url ? `<a href="${post.url}" target="_blank"><button>View on Reddit</button></a>` : ''}
-          </div>
-        </div>`;
-    }).join('');
+    const res = await fetch(`${apiBase()}/api/matches?company_id=${currentCompanyId}`, { headers: authHeaders() });
+    allMatches = await res.json();
+    renderContentMatches();
   } catch (e) {
     container.innerHTML = '<div class="empty">Could not load matches — check backend connection.</div>';
   }
+}
+
+function renderContentMatches() {
+  const container = document.getElementById('contentList');
+  const countEl = document.getElementById('contentCount');
+  if (!allMatches.length) {
+    container.innerHTML = `<div class="empty"><h3>No matches yet</h3>Run <code>python -m workers.ingest</code> to populate this from your configured subreddits.</div>`;
+    countEl.textContent = '';
+    return;
+  }
+
+  const query = document.getElementById('contentSearch').value.trim().toLowerCase();
+  const sort = document.getElementById('contentSort').value;
+
+  let rows = allMatches.filter(m => {
+    if (!query) return true;
+    const post = m.posts || {};
+    const haystack = `${post.title || ''} ${post.subreddit || ''} ${m.ai_reasoning || ''}`.toLowerCase();
+    return haystack.includes(query);
+  });
+
+  rows = rows.slice().sort((a, b) => {
+    if (sort === 'score-desc') return b.intent_score - a.intent_score;
+    if (sort === 'score-asc') return a.intent_score - b.intent_score;
+    const aDate = new Date((a.posts || {}).created_at || a.created_at).getTime();
+    const bDate = new Date((b.posts || {}).created_at || b.created_at).getTime();
+    return sort === 'date-desc' ? bDate - aDate : aDate - bDate;
+  });
+
+  countEl.textContent = `${rows.length} of ${allMatches.length} match${allMatches.length === 1 ? '' : 'es'}`;
+
+  if (!rows.length) {
+    container.innerHTML = '<div class="empty">No matches fit that search.</div>';
+    return;
+  }
+
+  container.innerHTML = rows.map(m => {
+    const post = m.posts || {};
+    return `
+      <div class="card">
+        <div class="card-top">
+          <div>
+            <p class="card-title">${post.title || '(untitled)'}</p>
+            <div class="card-meta">r/${post.subreddit || '?'} · u/${post.author_username || 'unknown'} · ${post.created_at ? timeAgo(post.created_at) : ''}</div>
+          </div>
+          ${scoreMeter(m.intent_score)}
+        </div>
+        <div class="reasoning">${m.ai_reasoning || ''}</div>
+        <div class="card-actions">
+          ${post.url ? `<a href="${post.url}" target="_blank"><button>View on Reddit</button></a>` : ''}
+        </div>
+      </div>`;
+  }).join('');
 }
 
 async function loadLeads() {
@@ -209,55 +358,127 @@ async function loadLeads() {
   if (!currentCompanyId) return;
   container.innerHTML = '<div class="empty">Loading…</div>';
   try {
-    const res = await fetch(`${apiBase()}/api/leads?company_id=${currentCompanyId}`);
-    const leads = await res.json();
-    if (!leads.length) {
-      container.innerHTML = `<div class="empty"><h3>No leads yet</h3>Leads appear here once a competitor-mode scanner_config picks up switch-intent signal.</div>`;
-      return;
-    }
-    container.innerHTML = leads.map(l => `
-      <div class="card">
-        <div class="card-top">
-          <div>
-            <p class="card-title">u/${l.reddit_username}</p>
-            <div class="card-meta">
-              First seen ${timeAgo(l.first_seen)} · Last seen ${timeAgo(l.last_seen)}
-              &nbsp;<span class="status-badge status-${l.status}">${l.status}</span>
-            </div>
-          </div>
-          <span class="score-pill ${scoreClass(l.aggregate_score)}">${l.aggregate_score}/100</span>
-        </div>
-        <div class="card-actions">
-          <button onclick="updateStatus('${l.id}', 'reviewed')">Mark reviewed</button>
-          <button onclick="updateStatus('${l.id}', 'contacted')">Mark contacted</button>
-          <button onclick="updateStatus('${l.id}', 'dismissed')">Dismiss</button>
-          <button onclick="viewSignals('${l.id}')">View signals</button>
-        </div>
-        <div id="signals-${l.id}"></div>
-      </div>
-    `).join('');
+    const res = await fetch(`${apiBase()}/api/leads?company_id=${currentCompanyId}`, { headers: authHeaders() });
+    allLeads = await res.json();
+    renderLeads();
   } catch (e) {
     container.innerHTML = '<div class="empty">Could not load leads — check backend connection.</div>';
   }
 }
 
-async function updateStatus(leadId, status) {
-  await fetch(`${apiBase()}/api/leads/${leadId}/status?status=${status}`, { method: 'PATCH' });
-  loadLeads();
+function leadCardHtml(l) {
+  const pending = l._pending ? ' is-pending' : '';
+  const err = l._error ? `<span class="inline-error">${l._error}</span>` : '';
+  const signalsOpen = openSignalPanels.has(l.id);
+  return `
+    <div class="card${pending}" id="lead-${l.id}">
+      <div class="card-top">
+        <div>
+          <p class="card-title">u/${l.reddit_username}</p>
+          <div class="card-meta">
+            First seen ${timeAgo(l.first_seen)} · Last seen ${timeAgo(l.last_seen)}
+            &nbsp;<span class="status-badge status-${l.status}">${l.status}</span>
+          </div>
+        </div>
+        ${scoreMeter(l.aggregate_score)}
+      </div>
+      <div class="card-actions">
+        <button ${l.status === 'reviewed' ? 'class="is-current"' : ''} ${l._pending ? 'disabled' : ''} onclick="updateStatus('${l.id}', 'reviewed')">Mark reviewed</button>
+        <button ${l.status === 'contacted' ? 'class="is-current"' : ''} ${l._pending ? 'disabled' : ''} onclick="updateStatus('${l.id}', 'contacted')">Mark contacted</button>
+        <button ${l.status === 'dismissed' ? 'class="is-current"' : ''} ${l._pending ? 'disabled' : ''} onclick="updateStatus('${l.id}', 'dismissed')">Dismiss</button>
+        <button ${l._pending ? 'disabled' : ''} onclick="toggleSignals('${l.id}')">${signalsOpen ? 'Hide signals' : 'View signals'}</button>
+        ${err}
+      </div>
+      <div class="signals-block" id="signals-${l.id}" style="display:${signalsOpen ? 'block' : 'none'};"></div>
+    </div>`;
 }
 
-async function viewSignals(leadId) {
+function renderLeads() {
+  const container = document.getElementById('leadsList');
+  const countEl = document.getElementById('leadsCount');
+  if (!allLeads.length) {
+    container.innerHTML = `<div class="empty"><h3>No leads yet</h3>Leads appear here once a competitor-mode scanner_config picks up switch-intent signal.</div>`;
+    countEl.textContent = '';
+    return;
+  }
+
+  const query = document.getElementById('leadsSearch').value.trim().toLowerCase();
+  const sort = document.getElementById('leadsSort').value;
+
+  let rows = allLeads.filter(l => {
+    if (leadsStatusFilter !== 'all' && l.status !== leadsStatusFilter) return false;
+    if (query && !l.reddit_username.toLowerCase().includes(query)) return false;
+    return true;
+  });
+
+  rows = rows.slice().sort((a, b) => {
+    if (sort === 'score-desc') return b.aggregate_score - a.aggregate_score;
+    if (sort === 'score-asc') return a.aggregate_score - b.aggregate_score;
+    if (sort === 'firstseen-desc') return new Date(b.first_seen) - new Date(a.first_seen);
+    return new Date(b.last_seen) - new Date(a.last_seen);
+  });
+
+  countEl.textContent = `${rows.length} of ${allLeads.length} lead${allLeads.length === 1 ? '' : 's'}`;
+
+  if (!rows.length) {
+    container.innerHTML = '<div class="empty">No leads match the current filters.</div>';
+    return;
+  }
+
+  container.innerHTML = rows.map(leadCardHtml).join('');
+  rows.forEach(l => { if (openSignalPanels.has(l.id)) renderSignalsInto(l.id); });
+}
+
+async function updateStatus(leadId, status) {
+  const lead = allLeads.find(l => l.id === leadId);
+  if (!lead) return;
+  const previousStatus = lead.status;
+
+  // Optimistic update: reflect the new status immediately, don't wait on the network.
+  lead.status = status;
+  lead._pending = true;
+  delete lead._error;
+  renderLeads();
+
+  try {
+    const res = await fetch(`${apiBase()}/api/leads/${leadId}/status?status=${status}`, { method: 'PATCH', headers: authHeaders() });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    lead._pending = false;
+  } catch (e) {
+    // Roll back on failure so the UI never lies about what the backend has.
+    lead.status = previousStatus;
+    lead._pending = false;
+    lead._error = 'Update failed — try again';
+  }
+  renderLeads();
+}
+
+async function toggleSignals(leadId) {
+  if (openSignalPanels.has(leadId)) {
+    openSignalPanels.delete(leadId);
+  } else {
+    openSignalPanels.add(leadId);
+  }
+  renderLeads();
+}
+
+async function renderSignalsInto(leadId) {
   const target = document.getElementById(`signals-${leadId}`);
-  if (target.innerHTML) { target.innerHTML = ''; return; }
-  const res = await fetch(`${apiBase()}/api/leads/${leadId}/signals`);
-  const signals = await res.json();
-  target.innerHTML = signals.map(s => {
-    const post = s.posts || {};
-    return `<div class="reasoning" style="margin-top:10px;">
-      <strong>${s.competitor_mentioned}</strong> — ${s.pain_point || ''}<br>
-      "${post.title || ''}" ${post.url ? `<a href="${post.url}" target="_blank">↗</a>` : ''}
-    </div>`;
-  }).join('') || '<div class="card-meta" style="margin-top:8px;">No signals found.</div>';
+  if (!target) return;
+  target.innerHTML = '<div class="card-meta">Loading signals…</div>';
+  try {
+    const res = await fetch(`${apiBase()}/api/leads/${leadId}/signals`, { headers: authHeaders() });
+    const signals = await res.json();
+    target.innerHTML = signals.map(s => {
+      const post = s.posts || {};
+      return `<div class="reasoning" style="margin-top:10px;">
+        <strong>${s.competitor_mentioned}</strong> — ${s.pain_point || ''}<br>
+        "${post.title || ''}" ${post.url ? `<a href="${post.url}" target="_blank">↗</a>` : ''}
+      </div>`;
+    }).join('') || '<div class="card-meta">No signals found.</div>';
+  } catch (e) {
+    target.innerHTML = '<div class="inline-error">Could not load signals.</div>';
+  }
 }
 
 function loadAll() {
@@ -272,6 +493,19 @@ document.querySelectorAll('.tab').forEach(tab => {
     tab.classList.add('active');
     document.getElementById(`panel-${tab.dataset.tab}`).classList.add('active');
   };
+});
+
+document.getElementById('contentSearch').addEventListener('input', renderContentMatches);
+document.getElementById('contentSort').addEventListener('change', renderContentMatches);
+document.getElementById('leadsSearch').addEventListener('input', renderLeads);
+document.getElementById('leadsSort').addEventListener('change', renderLeads);
+document.getElementById('leadsStatusFilter').addEventListener('click', (e) => {
+  const chip = e.target.closest('.chip');
+  if (!chip) return;
+  document.querySelectorAll('#leadsStatusFilter .chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+  leadsStatusFilter = chip.dataset.status;
+  renderLeads();
 });
 
 document.getElementById('apiBase').addEventListener('change', loadCompanies);

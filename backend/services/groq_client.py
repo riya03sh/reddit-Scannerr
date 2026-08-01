@@ -3,7 +3,7 @@ Same interface as gemini_client.py / ollama_client.py."""
 import json
 from groq import Groq
 from config import settings
-from services.gemini_client import CONTENT_MODE_PROMPT, COMPETITOR_MODE_PROMPT
+from services.gemini_client import CONTENT_MODE_PROMPT, COMPETITOR_MODE_PROMPT, _normalize_competitor_result
 
 _client = None
 
@@ -15,10 +15,10 @@ def get_client():
     return _client
 
 
-def _call(prompt: str) -> dict:
+def _call(prompt: str, model: str) -> dict:
     client = get_client()
     response = client.chat.completions.create(
-        model=settings.groq_model,
+        model=model,
         messages=[{"role": "user", "content": prompt}],
         response_format={"type": "json_object"},
     )
@@ -33,7 +33,7 @@ def classify_content_mode(business_context: str, keywords: list[str], title: str
         title=title,
         body=body[:2000],
     )
-    return _call(prompt)
+    return _call(prompt, model=settings.groq_model)
 
 
 def classify_competitor_mode(company_name: str, product_description: str, competitors: list[str], title: str, body: str) -> dict:
@@ -44,4 +44,4 @@ def classify_competitor_mode(company_name: str, product_description: str, compet
         title=title,
         body=body[:2000],
     )
-    return _call(prompt)
+    return _normalize_competitor_result(_call(prompt, model=settings.groq_competitor_model))

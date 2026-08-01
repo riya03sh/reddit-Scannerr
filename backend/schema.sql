@@ -79,3 +79,12 @@ create table if not exists lead_signals (
 );
 
 create index if not exists idx_lead_signals_lead on lead_signals(lead_id);
+
+-- ---------- Auth: associate a company with the Supabase Auth user who owns it ----------
+-- Run this in the Supabase SQL editor against an existing database to add
+-- customer signup/auth support. Nullable + a plain unique index (not a NOT NULL
+-- unique constraint) so pre-existing companies created before auth existed
+-- (e.g. seed/test rows) aren't broken - Postgres allows multiple NULLs under
+-- a unique index, only actual duplicate user_ids are rejected.
+alter table companies add column if not exists user_id uuid references auth.users(id) on delete cascade;
+create unique index if not exists idx_companies_user_id on companies(user_id);

@@ -1,10 +1,23 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 
 from services.supabase_client import get_supabase
 from services.reddit_client import get_reddit
 from services.gemini_client import get_model
+from routes.api import router as api_router
 
 app = FastAPI(title="Reddit Scanner API")
+
+# Dashboard is a standalone static HTML file (opened via file:// or served from any
+# port), so origin is unpredictable - wide open CORS is fine for this internal tool.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(api_router)
 
 
 @app.get("/")

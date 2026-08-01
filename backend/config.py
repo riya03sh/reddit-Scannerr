@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     llm_provider: str = "gemini"
     groq_api_key: str = ""
     groq_model: str = "llama-3.1-8b-instant"
+    # Competitor mode gets a bigger/slower model: lower volume (fewer subreddits,
+    # no keyword pre-filter) can absorb the cost, and testing showed the small
+    # instant model hallucinating competitor mentions even after prompt tightening.
+    groq_competitor_model: str = "llama-3.3-70b-versatile"
     ollama_model: str = "llama3.1"
 
     model_config = SettingsConfigDict(
