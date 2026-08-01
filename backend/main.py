@@ -5,9 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
+from config import settings
 from services.supabase_client import get_supabase
-from services.reddit_client import get_reddit
-from services.gemini_client import get_model
 from routes.api import router as api_router
 
 app = FastAPI(title="Reddit Scanner API")
@@ -42,8 +41,9 @@ def status():
 
 @app.get("/health")
 def health():
-    """Verifies all three external connections are reachable with current credentials.
-    Run this right after Phase 0 setup to confirm .env is wired correctly."""
+    """Verifies Supabase plus whichever post-source and LLM provider are actually
+    configured via DATA_SOURCE / LLM_PROVIDER - not every integration this project
+    knows how to talk to, since most setups only use one of each."""
     results = {}
 
     try:
@@ -53,20 +53,36 @@ def health():
     except Exception as e:
         results["supabase"] = f"error: {e}"
 
-    try:
-        reddit = get_reddit()
-        reddit.subreddit("test").display_name  # forces a lazy request
-        results["reddit"] = "ok"
-    except Exception as e:
-        results["reddit"] = f"error: {e}"
+    if settings.data_source == "reddit":
+        try:
+            from services.reddit_client import get_reddit
+            reddit = get_reddit()
+            reddit.subreddit("test").display_name  # forces a lazy request
+            results["reddit"] = "ok"
+        except Exception as e:
+            results["reddit"] = f"error: {e}"
+    else:
+        results["data_source"] = f"ok ({settings.data_source}, no external call needed)"
 
     try:
-        model = get_model()
-        model.generate_content("Say 'ok' and nothing else.")
-        results["gemini"] = "ok"
+        if settings.llm_provider == "ollama":
+            import httpx
+            httpx.get("http://localhost:11434/api/tags", timeout=5.0).raise_for_status()
+            results["llm"] = f"ok (ollama/{settings.ollama_model})"
+        elif settings.llm_provider == "groq":
+            from services.groq_client import get_client
+            get_client().chat.completions.create(
+                model=settings.groq_model,
+                messages=[{"role": "user", "content": "Say 'ok' and nothing else."}],
+            )
+            results["llm"] = f"ok (groq/{settings.groq_model})"
+        else:
+            from services.gemini_client import get_model
+            get_model().generate_content("Say 'ok' and nothing else.")
+            results["llm"] = "ok (gemini)"
     except Exception as e:
-        results["gemini"] = f"error: {e}"
+        results["llm"] = f"error: {e}"
 
-    if any("error" in v for v in results.values()):
+    if any(str(v).startswith("error") for v in results.values()):
         raise HTTPException(status_code=500, detail=results)
     return results
