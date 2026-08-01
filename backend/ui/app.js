@@ -11,13 +11,18 @@ const LS = {
   token: 'rs_access_token',
   refresh: 'rs_refresh_token',
   email: 'rs_email',
-  apiBase: 'rs_api_base',
-  sbUrl: 'rs_supabase_url',
-  sbAnon: 'rs_supabase_anon_key',
   companyId: 'rs_company_id',
 };
 
-const DEFAULT_API_BASE = 'http://127.0.0.1:8000';
+/*
+ * Fixed to this one deployment: a single local backend talking to a single
+ * Supabase project. The anon key is Supabase's public, client-safe key (unlike
+ * the service-role secret in backend/.env) - baking it in here is the same
+ * trust level as shipping it in any other client-side bundle.
+ */
+const API_BASE = 'http://127.0.0.1:8000';
+const SUPABASE_URL = 'https://hlnrsashchwzzvbqqmch.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_77ybrddbVRazAuE_lHm89A_CX-AdPCb';
 
 // ---- storage ----
 
@@ -31,19 +36,13 @@ function lsSet(key, value) {
 }
 
 const session = {
-  apiBase: () => lsGet(LS.apiBase, DEFAULT_API_BASE).replace(/\/+$/, ''),
-  supabaseUrl: () => lsGet(LS.sbUrl).replace(/\/+$/, ''),
-  supabaseAnonKey: () => lsGet(LS.sbAnon),
+  apiBase: () => API_BASE,
+  supabaseUrl: () => SUPABASE_URL,
+  supabaseAnonKey: () => SUPABASE_ANON_KEY,
   token: () => lsGet(LS.token),
   email: () => lsGet(LS.email),
   companyId: () => lsGet(LS.companyId),
   isSignedIn: () => !!lsGet(LS.token),
-
-  saveSettings({ apiBase, supabaseUrl, supabaseAnonKey }) {
-    lsSet(LS.apiBase, apiBase);
-    lsSet(LS.sbUrl, supabaseUrl);
-    lsSet(LS.sbAnon, supabaseAnonKey);
-  },
 
   signIn({ token, refreshToken, email }) {
     lsSet(LS.token, token);

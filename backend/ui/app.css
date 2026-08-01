@@ -310,16 +310,3 @@ code {
   background: var(--color-neutral-200);
   padding: 2px var(--space-1);
 }
-
-/* — details/summary for the collapsible connection panel — */
-details.settings > summary {
-  cursor: pointer;
-  list-style: none;
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-neutral-700);
-}
-details.settings > summary::-webkit-details-marker { display: none; }
-details.settings > summary:hover { color: var(--color-accent); }
-details.settings[open] > summary { margin-bottom: var(--space-3); }

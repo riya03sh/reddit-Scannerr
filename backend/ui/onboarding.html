@@ -34,23 +34,6 @@
       </div>
 
       <div style="flex:1"></div>
-
-      <details class="settings" id="settingsPanel">
-        <summary>Connection settings</summary>
-        <div class="field">
-          <label for="apiBaseInput">Backend URL</label>
-          <input class="input" type="text" id="apiBaseInput" spellcheck="false">
-        </div>
-        <div class="field">
-          <label for="supabaseUrlInput">Supabase project URL</label>
-          <input class="input" type="text" id="supabaseUrlInput" placeholder="https://xxxx.supabase.co" spellcheck="false">
-        </div>
-        <div class="field">
-          <label for="supabaseAnonKeyInput">Supabase anon key</label>
-          <input class="input" type="text" id="supabaseAnonKeyInput" placeholder="eyJ…" spellcheck="false">
-        </div>
-        <p class="hint">Stored in this browser only. The anon key is the public key — safe client-side. Never paste the service-role secret here.</p>
-      </details>
     </aside>
 
     <main class="main-col">
@@ -196,33 +179,6 @@
 
 <script src="app.js"></script>
 <script>
-// ── Connection settings ──────────────────────────────────────────
-
-const settingInputs = {
-  apiBaseInput: () => session.apiBase(),
-  supabaseUrlInput: () => session.supabaseUrl(),
-  supabaseAnonKeyInput: () => session.supabaseAnonKey(),
-};
-
-function hydrateSettings() {
-  Object.entries(settingInputs).forEach(([id, read]) => {
-    el(id).value = read();
-    el(id).addEventListener('input', persistSettings);
-  });
-  // Nudge the panel open on a first visit, when there's nothing to connect to yet.
-  if (!session.supabaseUrl() || !session.supabaseAnonKey()) {
-    el('settingsPanel').open = true;
-  }
-}
-
-function persistSettings() {
-  session.saveSettings({
-    apiBase: el('apiBaseInput').value.trim(),
-    supabaseUrl: el('supabaseUrlInput').value.trim(),
-    supabaseAnonKey: el('supabaseAnonKeyInput').value.trim(),
-  });
-}
-
 // ── Step state ───────────────────────────────────────────────────
 
 const steps = {
@@ -257,7 +213,6 @@ document.querySelectorAll('input[name="authmode"]').forEach((radio) => {
 
 el('authForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  persistSettings();
 
   const email = el('authEmail').value.trim();
   const password = el('authPassword').value;
@@ -464,7 +419,6 @@ el('configForm').addEventListener('submit', async (e) => {
 
 // ── Init ─────────────────────────────────────────────────────────
 
-hydrateSettings();
 syncModeFields();
 if (session.isSignedIn()) onSignedIn();
 </script>
