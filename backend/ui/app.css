@@ -276,6 +276,7 @@
   border-color: var(--color-accent);
 }
 tr.is-pending { opacity: 0.5; }
+tr.is-paused td { opacity: 0.55; }
 
 .signals-cell { padding: 0 !important; background: var(--color-neutral-100); }
 .signals-inner {

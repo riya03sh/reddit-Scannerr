@@ -343,14 +343,20 @@ function renderConfigs() {
     <div class="table-wrap">
       <table class="table">
         <thead>
-          <tr><th>Mode</th><th>Subreddits</th><th>Tracking</th><th>Threshold</th></tr>
+          <tr><th>Mode</th><th>Status</th><th>Subreddits</th><th>Tracking</th><th>Threshold</th></tr>
         </thead>
         <tbody>
           ${existingConfigs.map((c) => {
             const tracking = c.mode === 'content' ? c.keywords : c.competitors;
+            // A paused scanner used to render identically to a running one, which
+            // made the list actively misleading about what the worker picks up.
+            const paused = c.is_active === false;
             return `
-              <tr>
+              <tr${paused ? ' class="is-paused"' : ''}>
                 <td><span class="tag tag-accent">${esc(c.mode)}</span></td>
+                <td class="is-tight">
+                  <span class="tag ${paused ? 'tag-neutral' : 'tag-outline'}">${paused ? 'paused' : 'active'}</span>
+                </td>
                 <td>${c.subreddits.map((s) => `r/${esc(s)}`).join(', ')}</td>
                 <td>${tracking.map(esc).join(', ') || '—'}</td>
                 <td class="is-tight">${esc(c.min_score_threshold)}</td>
