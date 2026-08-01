@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Get started — Reddit Scanner</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<div class="page">
+
+  <nav class="nav">
+    <div class="nav-brand">REDDIT SCANNER</div>
+    <span class="nav-meta" id="whoami"></span>
+    <button class="btn btn-secondary" id="signOutBtn" hidden>Sign out</button>
+  </nav>
+
+  <div class="page-body split">
+
+    <aside class="rail rail-sticky">
+      <div>
+        <div class="kicker">Setup</div>
+        <h3 style="margin-top:var(--space-3)">Three steps to<br>your first scan.</h3>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="stack">
+        <div class="kicker" id="navStep1">01 — Account</div>
+        <div class="kicker" id="navStep2">02 — Company</div>
+        <div class="kicker" id="navStep3">03 — Scanner</div>
+      </div>
+
+      <div style="flex:1"></div>
+
+      <details class="settings" id="settingsPanel">
+        <summary>Connection settings</summary>
+        <div class="field">
+          <label for="apiBaseInput">Backend URL</label>
+          <input class="input" type="text" id="apiBaseInput" spellcheck="false">
+        </div>
+        <div class="field">
+          <label for="supabaseUrlInput">Supabase project URL</label>
+          <input class="input" type="text" id="supabaseUrlInput" placeholder="https://xxxx.supabase.co" spellcheck="false">
+        </div>
+        <div class="field">
+          <label for="supabaseAnonKeyInput">Supabase anon key</label>
+          <input class="input" type="text" id="supabaseAnonKeyInput" placeholder="eyJ…" spellcheck="false">
+        </div>
+        <p class="hint">Stored in this browser only. The anon key is the public key — safe client-side. Never paste the service-role secret here.</p>
+      </details>
+    </aside>
+
+    <main class="main-col">
+
+      <!-- ── Step 1 — account ───────────────────────────────────── -->
+      <section class="section" id="sectionAuth">
+        <div class="section-head">
+          <span class="kicker" id="badgeAuth">01</span>
+          <h3 style="margin:0">Create your account</h3>
+        </div>
+        <p class="section-desc">Email and password, handled by Supabase Auth. Signing in here carries straight through to the dashboard.</p>
+
+        <div class="form-narrow">
+          <div class="seg" id="authModeSeg" role="radiogroup" aria-label="Account mode" style="margin-bottom:var(--space-6)">
+            <label class="seg-opt">
+              <input type="radio" name="authmode" value="login" checked>
+              Log in
+            </label>
+            <label class="seg-opt">
+              <input type="radio" name="authmode" value="signup">
+              Sign up
+            </label>
+          </div>
+
+          <form id="authForm" novalidate>
+            <div class="field">
+              <label for="authEmail">Email</label>
+              <input class="input" type="email" id="authEmail" autocomplete="email" required>
+            </div>
+            <div class="field">
+              <label for="authPassword">Password</label>
+              <input class="input" type="password" id="authPassword" autocomplete="current-password" required>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-primary" type="submit" id="authSubmit">Log in</button>
+            </div>
+          </form>
+          <div class="status" id="authStatus" role="status"></div>
+        </div>
+      </section>
+
+      <!-- ── Step 2 — company ───────────────────────────────────── -->
+      <section class="section" id="sectionCompany" hidden>
+        <div class="section-head">
+          <span class="kicker" id="badgeCompany">02</span>
+          <h3 style="margin:0">What are you selling?</h3>
+        </div>
+        <p class="section-desc">This description is fed to the model on every post it scores — it's how the AI judges whether a post shows real buying intent or is just category chatter. Be specific.</p>
+
+        <div class="form-narrow">
+          <form id="companyForm" novalidate>
+            <div class="field">
+              <label for="companyName">Company name</label>
+              <input class="input" type="text" id="companyName" required>
+            </div>
+            <div class="field">
+              <label for="companyDesc">Product description</label>
+              <textarea class="input" id="companyDesc" placeholder="e.g. a lightweight project management tool for small teams — kanban, dependencies, no admin overhead"></textarea>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-primary" type="submit" id="companySubmit">Save company</button>
+            </div>
+          </form>
+          <div class="status" id="companyStatus" role="status"></div>
+        </div>
+      </section>
+
+      <!-- ── Step 3 — scanner ───────────────────────────────────── -->
+      <section class="section" id="sectionConfig" hidden>
+        <div class="section-head">
+          <span class="kicker" id="badgeConfig">03</span>
+          <h3 style="margin:0">Set up a scanner</h3>
+        </div>
+        <p class="section-desc">Add as many as you like — a content scanner to find people describing a problem you solve, a competitor scanner to find people unhappy with an alternative.</p>
+
+        <div class="form-narrow">
+          <form id="configForm" novalidate>
+            <div class="field">
+              <label>Mode</label>
+              <div class="seg">
+                <label class="seg-opt">
+                  <input type="radio" name="mode" value="content" checked>
+                  Content
+                </label>
+                <label class="seg-opt">
+                  <input type="radio" name="mode" value="competitor">
+                  Competitor
+                </label>
+              </div>
+              <p class="hint" id="modeHint"></p>
+            </div>
+
+            <div class="field">
+              <label for="configSubreddits">Subreddits</label>
+              <input class="input" type="text" id="configSubreddits" placeholder="productivity, SaaS, smallbusiness" spellcheck="false" required>
+              <p class="hint">Comma-separated, without the <code>r/</code> prefix.</p>
+            </div>
+
+            <div class="field" id="fieldKeywords">
+              <label for="configKeywords">Keywords</label>
+              <input class="input" type="text" id="configKeywords" placeholder="task manager, project tracking, too many tools" spellcheck="false">
+              <p class="hint">A cheap pre-filter that runs before the model, so you only pay for posts worth scoring.</p>
+            </div>
+
+            <div class="field" id="fieldCompetitors" hidden>
+              <label for="configCompetitors">Competitors</label>
+              <input class="input" type="text" id="configCompetitors" placeholder="Asana, Trello, Monday.com" spellcheck="false">
+              <p class="hint">Competitor mode skips keyword pre-filtering — every post goes to the model, so misspellings and indirect references still get caught.</p>
+            </div>
+
+            <div class="field">
+              <label for="configThreshold">Minimum score threshold</label>
+              <input class="input" type="number" id="configThreshold" min="0" max="1" step="0.05" value="0.6" style="max-width:140px">
+              <p class="hint">0 to 1. Only matches the model scores at or above this land in your digest.</p>
+            </div>
+
+            <div class="form-actions">
+              <button class="btn btn-primary" type="submit" id="configSubmit">Add scanner</button>
+            </div>
+          </form>
+          <div class="status" id="configStatus" role="status"></div>
+        </div>
+
+        <div id="configList" style="margin-top:var(--space-8)"></div>
+      </section>
+
+      <!-- ── Done ───────────────────────────────────────────────── -->
+      <section class="section" id="sectionDone" hidden>
+        <div class="section-head">
+          <span class="kicker kicker-done">Ready</span>
+        </div>
+        <h3>You're set up.</h3>
+        <p class="section-desc">Run the ingestion worker to pull posts, classify them, and fill your dashboard:</p>
+        <p><code>cd backend &amp;&amp; python -m workers.ingest</code></p>
+        <div class="form-actions">
+          <a class="btn btn-primary" href="dashboard.html">Go to dashboard →</a>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+// ── Connection settings ──────────────────────────────────────────
+
+const settingInputs = {
+  apiBaseInput: () => session.apiBase(),
+  supabaseUrlInput: () => session.supabaseUrl(),
+  supabaseAnonKeyInput: () => session.supabaseAnonKey(),
+};
+
+function hydrateSettings() {
+  Object.entries(settingInputs).forEach(([id, read]) => {
+    el(id).value = read();
+    el(id).addEventListener('input', persistSettings);
+  });
+  // Nudge the panel open on a first visit, when there's nothing to connect to yet.
+  if (!session.supabaseUrl() || !session.supabaseAnonKey()) {
+    el('settingsPanel').open = true;
+  }
+}
+
+function persistSettings() {
+  session.saveSettings({
+    apiBase: el('apiBaseInput').value.trim(),
+    supabaseUrl: el('supabaseUrlInput').value.trim(),
+    supabaseAnonKey: el('supabaseAnonKeyInput').value.trim(),
+  });
+}
+
+// ── Step state ───────────────────────────────────────────────────
+
+const steps = {
+  auth: { section: 'sectionAuth', badge: 'badgeAuth', nav: 'navStep1', label: '01' },
+  company: { section: 'sectionCompany', badge: 'badgeCompany', nav: 'navStep2', label: '02' },
+  config: { section: 'sectionConfig', badge: 'badgeConfig', nav: 'navStep3', label: '03' },
+};
+
+function markDone(step) {
+  const s = steps[step];
+  el(s.badge).textContent = '✓ ' + s.label;
+  el(s.badge).classList.add('kicker-done');
+  el(s.nav).classList.add('kicker-done');
+}
+
+function reveal(step) {
+  el(steps[step].section).hidden = false;
+}
+
+// ── Auth ─────────────────────────────────────────────────────────
+
+let authMode = 'login';
+
+document.querySelectorAll('input[name="authmode"]').forEach((radio) => {
+  radio.addEventListener('change', () => {
+    authMode = radio.value;
+    el('authSubmit').textContent = authMode === 'login' ? 'Log in' : 'Sign up';
+    el('authPassword').autocomplete = authMode === 'login' ? 'current-password' : 'new-password';
+    setStatus(el('authStatus'), '');
+  });
+});
+
+el('authForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  persistSettings();
+
+  const email = el('authEmail').value.trim();
+  const password = el('authPassword').value;
+  if (!email || !password) {
+    return setStatus(el('authStatus'), 'Email and password are both required.', 'error');
+  }
+
+  const btn = el('authSubmit');
+  btn.disabled = true;
+  setStatus(el('authStatus'), authMode === 'login' ? 'Signing in…' : 'Creating account…', 'info');
+
+  try {
+    const data = await (authMode === 'login' ? auth.logIn(email, password) : auth.signUp(email, password));
+
+    // Supabase returns no access_token on signup when email confirmation is on.
+    if (!data.access_token) {
+      setStatus(el('authStatus'), 'Account created. Check your email to confirm, then log in.', 'ok');
+      return;
+    }
+
+    session.signIn({
+      token: data.access_token,
+      refreshToken: data.refresh_token,
+      email: (data.user && data.user.email) || email,
+    });
+    setStatus(el('authStatus'), '');
+    await onSignedIn();
+  } catch (err) {
+    setStatus(el('authStatus'), err.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+el('signOutBtn').addEventListener('click', () => {
+  session.signOut();
+  location.reload();
+});
+
+async function onSignedIn() {
+  el('whoami').textContent = session.email();
+  el('signOutBtn').hidden = false;
+  markDone('auth');
+  el('authForm').hidden = true;
+  el('authModeSeg').hidden = true;
+  reveal('company');
+  await loadCompany();
+}
+
+// ── Company ──────────────────────────────────────────────────────
+
+let company = null;
+
+async function loadCompany() {
+  try {
+    const companies = await api('/api/companies');
+    if (companies && companies.length) {
+      company = companies[0];
+      session.setCompanyId(company.id);
+      onCompanyReady(`${company.name} is already set up.`);
+    }
+  } catch (err) {
+    setStatus(el('companyStatus'), err.message, 'error');
+  }
+}
+
+function onCompanyReady(message) {
+  markDone('company');
+  el('companyForm').hidden = true;
+  setStatus(el('companyStatus'), message, 'ok');
+  reveal('config');
+  loadConfigs();
+}
+
+el('companyForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = el('companyName').value.trim();
+  if (!name) return setStatus(el('companyStatus'), 'Company name is required.', 'error');
+
+  const btn = el('companySubmit');
+  btn.disabled = true;
+  setStatus(el('companyStatus'), 'Saving…', 'info');
+
+  try {
+    company = await api('/api/companies', {
+      method: 'POST',
+      body: JSON.stringify({ name, product_description: el('companyDesc').value.trim() || null }),
+    });
+    session.setCompanyId(company.id);
+    onCompanyReady(`${company.name} saved.`);
+  } catch (err) {
+    setStatus(el('companyStatus'), err.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── Scanner config ───────────────────────────────────────────────
+
+const MODE_HINTS = {
+  content: 'Finds posts describing a problem your product solves, scored for genuine buying intent.',
+  competitor: 'Finds people complaining about a named competitor, and rolls them up into leads.',
+};
+
+function currentMode() {
+  return document.querySelector('input[name="mode"]:checked').value;
+}
+
+function syncModeFields() {
+  const mode = currentMode();
+  el('fieldKeywords').hidden = mode !== 'content';
+  el('fieldCompetitors').hidden = mode !== 'competitor';
+  el('modeHint').textContent = MODE_HINTS[mode];
+}
+
+document.querySelectorAll('input[name="mode"]').forEach((radio) => {
+  radio.addEventListener('change', syncModeFields);
+});
+
+let existingConfigs = [];
+
+function renderConfigs() {
+  const container = el('configList');
+  if (!existingConfigs.length) return (container.innerHTML = '');
+
+  container.innerHTML = `
+    <div class="kicker" style="margin-bottom:var(--space-3)">Scanners</div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr><th>Mode</th><th>Subreddits</th><th>Tracking</th><th>Threshold</th></tr>
+        </thead>
+        <tbody>
+          ${existingConfigs.map((c) => {
+            const tracking = c.mode === 'content' ? c.keywords : c.competitors;
+            return `
+              <tr>
+                <td><span class="tag tag-accent">${esc(c.mode)}</span></td>
+                <td>${c.subreddits.map((s) => `r/${esc(s)}`).join(', ')}</td>
+                <td>${tracking.map(esc).join(', ') || '—'}</td>
+                <td class="is-tight">${esc(c.min_score_threshold)}</td>
+              </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+async function loadConfigs() {
+  try {
+    existingConfigs = await api(`/api/scanner-configs?company_id=${encodeURIComponent(session.companyId())}`);
+    renderConfigs();
+    if (existingConfigs.length) {
+      markDone('config');
+      el('sectionDone').hidden = false;
+    }
+  } catch (err) {
+    setStatus(el('configStatus'), err.message, 'error');
+  }
+}
+
+el('configForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const mode = currentMode();
+  const body = {
+    mode,
+    subreddits: splitList(el('configSubreddits').value),
+    keywords: mode === 'content' ? splitList(el('configKeywords').value) : [],
+    competitors: mode === 'competitor' ? splitList(el('configCompetitors').value) : [],
+    min_score_threshold: parseFloat(el('configThreshold').value),
+  };
+
+  if (!body.subreddits.length) {
+    return setStatus(el('configStatus'), 'Add at least one subreddit.', 'error');
+  }
+  if (mode === 'content' && !body.keywords.length) {
+    return setStatus(el('configStatus'), 'Content mode needs at least one keyword.', 'error');
+  }
+  if (mode === 'competitor' && !body.competitors.length) {
+    return setStatus(el('configStatus'), 'Competitor mode needs at least one competitor.', 'error');
+  }
+
+  const btn = el('configSubmit');
+  btn.disabled = true;
+  setStatus(el('configStatus'), 'Creating…', 'info');
+
+  try {
+    const created = await api('/api/scanner-configs', { method: 'POST', body: JSON.stringify(body) });
+    existingConfigs.unshift(created);
+    renderConfigs();
+    markDone('config');
+    setStatus(el('configStatus'), 'Scanner added.', 'ok');
+
+    el('configSubreddits').value = '';
+    el('configKeywords').value = '';
+    el('configCompetitors').value = '';
+    el('sectionDone').hidden = false;
+  } catch (err) {
+    setStatus(el('configStatus'), err.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── Init ─────────────────────────────────────────────────────────
+
+hydrateSettings();
+syncModeFields();
+if (session.isSignedIn()) onSignedIn();
+</script>
+
+</body>
+</html>

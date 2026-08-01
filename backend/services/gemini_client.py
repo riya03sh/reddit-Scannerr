@@ -8,7 +8,7 @@ from google.api_core.exceptions import ResourceExhausted
 @lru_cache
 def get_model():
     genai.configure(api_key=settings.gemini_api_key)
-    return genai.GenerativeModel("gemini-3.5-flash-lite")
+    return genai.GenerativeModel("gemini-1.5-flash")
 
 
 CONTENT_MODE_PROMPT = """You are scoring a Reddit post for genuine buying intent relevant to a business.

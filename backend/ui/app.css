@@ -1,0 +1,325 @@
+/*
+ * App layer — patterns the Modernist system doesn't ship (page shells, the
+ * score meter, empty states). Every value comes from a styles.css token:
+ * no raw hex, no raw px where a --space-* exists, no rounded corners.
+ */
+
+/* The design system gives .btn and .seg an explicit display, which outranks the
+   UA stylesheet's [hidden] rule — without this, hiding them by attribute is a
+   no-op. Declare it once here rather than per-element. */
+[hidden] { display: none !important; }
+
+/* — page shell — */
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg);
+}
+.page-body {
+  flex: 1;
+  min-height: 0;
+}
+.nav-meta {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-neutral-700);
+}
+
+/* The modular grid: a fixed rail against a fluid main column, divided by a
+   2px rule rather than by whitespace. */
+.split {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  min-height: 0;
+}
+.rail {
+  border-right: 2px solid var(--color-divider);
+  padding: var(--space-8) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+.rail-sticky {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  max-height: 100vh;
+  overflow-y: auto;
+}
+.main-col {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 880px) {
+  .split { grid-template-columns: 1fr; }
+  .rail {
+    border-right: 0;
+    border-bottom: 2px solid var(--color-divider);
+    position: static;
+    max-height: none;
+  }
+}
+
+/* — section rhythm: strong horizontal rules between major blocks — */
+.section {
+  padding: var(--space-8);
+  border-bottom: 2px solid var(--color-divider);
+}
+.section:last-child { border-bottom: 0; }
+.section-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+.kicker {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-neutral-700);
+}
+.kicker-done { color: var(--color-accent); }
+.section-desc {
+  color: var(--color-neutral-700);
+  font-size: 14px;
+  margin-bottom: var(--space-6);
+  max-width: 62ch;
+}
+
+/* — forms — */
+.field + .field { margin-top: var(--space-4); }
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+.field-row .field + .field { margin-top: 0; }
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+.hint {
+  font-size: 12px;
+  color: var(--color-neutral-700);
+  margin-top: var(--space-2);
+  max-width: 62ch;
+}
+.stack { display: flex; flex-direction: column; gap: var(--space-2); }
+.form-narrow { max-width: 560px; }
+
+/* — status messages — */
+.status {
+  font-size: 13px;
+  margin-top: var(--space-3);
+}
+.status:empty { display: none; }
+.status-error {
+  color: var(--color-accent-700);
+  border-left: 2px solid var(--color-accent);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-accent-100);
+}
+.status-ok {
+  color: var(--color-neutral-800);
+  border-left: 2px solid var(--color-neutral-600);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-neutral-100);
+}
+.status-info { color: var(--color-neutral-700); }
+
+/* — tabs: flush-left labels under a 2px rule — */
+.tabs {
+  display: flex;
+  gap: var(--space-6);
+  padding: 0 var(--space-8);
+  border-bottom: 2px solid var(--color-divider);
+}
+.tab {
+  appearance: none;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  padding: var(--space-3) 0;
+  cursor: pointer;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--color-neutral-700);
+}
+.tab:hover { color: var(--color-text); }
+.tab[aria-selected='true'] {
+  color: var(--color-text);
+  border-bottom-color: var(--color-accent);
+}
+.panel { display: none; }
+.panel.is-active { display: block; }
+
+/* — toolbar — */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-4) var(--space-8);
+  border-bottom: 1px solid var(--color-divider);
+}
+.toolbar .input { width: auto; }
+.toolbar-search { flex: 1; min-width: 220px; }
+.toolbar-count {
+  margin-left: auto;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-neutral-700);
+}
+.chip-row { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.chip {
+  appearance: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  padding: var(--space-1) var(--space-3);
+  background: transparent;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+}
+.chip:hover { background: color-mix(in srgb, var(--color-text) 7%, transparent); }
+.chip[aria-pressed='true'] {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-bg);
+}
+
+/* — result lists — */
+.results { padding: var(--space-6) var(--space-8); }
+.result-list { display: flex; flex-direction: column; gap: var(--space-4); }
+
+.match {
+  border: 1px solid var(--color-divider);
+  border-left: 2px solid var(--color-accent);
+  background: var(--color-surface);
+  padding: var(--space-4);
+}
+.match-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-6);
+}
+.match-title {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 17px;
+  line-height: 1.2;
+  margin: 0;
+}
+.match-meta {
+  font-size: 12px;
+  color: var(--color-neutral-700);
+  margin-top: var(--space-1);
+}
+.match-reasoning {
+  font-size: 14px;
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-divider);
+}
+.match-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+/* — score meter: a flush-left bar, no radius — */
+.score { flex: none; width: 132px; text-align: left; }
+.score-value {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 20px;
+  line-height: 1;
+}
+.score-value span {
+  font-size: 12px;
+  color: var(--color-neutral-600);
+}
+.meter {
+  height: 6px;
+  margin-top: var(--space-2);
+  background: var(--color-neutral-300);
+}
+.meter-fill { height: 100%; background: var(--color-accent); }
+.meter-fill.is-mid { background: var(--color-accent-2-500); }
+.meter-fill.is-low { background: var(--color-neutral-500); }
+
+/* — leads table — */
+.table-wrap { overflow-x: auto; }
+.table td.is-tight { white-space: nowrap; }
+.lead-user {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+}
+.row-actions { display: flex; gap: var(--space-1); }
+.row-actions .btn { font-size: 12px; padding: var(--space-1) var(--space-2); }
+.btn[aria-pressed='true'] {
+  background: var(--color-accent);
+  color: var(--color-bg);
+  border-color: var(--color-accent);
+}
+tr.is-pending { opacity: 0.5; }
+
+.signals-cell { padding: 0 !important; background: var(--color-neutral-100); }
+.signals-inner {
+  padding: var(--space-4) var(--space-4) var(--space-4) var(--space-6);
+  border-left: 2px solid var(--color-accent);
+}
+.signal + .signal {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-divider);
+}
+.signal-head {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: var(--space-1);
+}
+.signal-quote { font-size: 13px; }
+
+/* — empty / loading states — */
+.empty {
+  padding: var(--space-8);
+  border: 1px solid var(--color-divider);
+  background: var(--color-surface);
+}
+.empty h4 { margin-bottom: var(--space-2); }
+.empty p { color: var(--color-neutral-700); font-size: 14px; margin: 0; }
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+  background: var(--color-neutral-200);
+  padding: 2px var(--space-1);
+}
+
+/* — details/summary for the collapsible connection panel — */
+details.settings > summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-neutral-700);
+}
+details.settings > summary::-webkit-details-marker { display: none; }
+details.settings > summary:hover { color: var(--color-accent); }
+details.settings[open] > summary { margin-bottom: var(--space-3); }

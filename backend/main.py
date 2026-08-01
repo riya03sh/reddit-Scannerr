@@ -1,5 +1,9 @@
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from services.supabase_client import get_supabase
 from services.reddit_client import get_reddit
@@ -19,9 +23,20 @@ app.add_middleware(
 
 app.include_router(api_router)
 
+# Serve the UI from the same origin as the API, so onboarding and the dashboard
+# share a localStorage session (file:// pages each get their own opaque origin,
+# which is why the old dashboard made you paste the access token in by hand).
+UI_DIR = Path(__file__).resolve().parent / "ui"
+app.mount("/ui", StaticFiles(directory=UI_DIR, html=True), name="ui")
+
 
 @app.get("/")
 def root():
+    return RedirectResponse(url="/ui/onboarding.html")
+
+
+@app.get("/status")
+def status():
     return {"status": "ok", "service": "reddit-scanner-backend"}
 
 

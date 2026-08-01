@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard — Reddit Scanner</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<div class="page">
+
+  <nav class="nav">
+    <div class="nav-brand">REDDIT SCANNER</div>
+    <span class="nav-meta" id="companyName"></span>
+    <span class="nav-meta" id="whoami"></span>
+    <button class="btn btn-secondary" id="refreshBtn">Refresh</button>
+    <button class="btn btn-secondary" id="signOutBtn">Sign out</button>
+  </nav>
+
+  <!-- Shown instead of the dashboard when there's no session. -->
+  <div class="section" id="signedOut" hidden>
+    <div class="kicker">Not signed in</div>
+    <h3>You need an account first.</h3>
+    <p class="section-desc">Sign in on the setup page — the session carries over automatically.</p>
+    <a class="btn btn-primary" href="onboarding.html">Go to setup →</a>
+  </div>
+
+  <div id="dashboard" hidden>
+    <div class="tabs" role="tablist">
+      <button class="tab" id="tab-content" role="tab" aria-selected="true" aria-controls="panel-content">Content digest</button>
+      <button class="tab" id="tab-leads" role="tab" aria-selected="false" aria-controls="panel-leads">Leads</button>
+    </div>
+
+    <!-- ── Content matches ──────────────────────────────────────── -->
+    <section class="panel is-active" id="panel-content" role="tabpanel" aria-labelledby="tab-content">
+      <div class="toolbar">
+        <input class="input toolbar-search" type="search" id="contentSearch" placeholder="Search title, subreddit, reasoning…">
+        <label class="kicker" for="contentSort">Sort</label>
+        <select class="input" id="contentSort">
+          <option value="score">Highest score</option>
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+        </select>
+        <span class="toolbar-count" id="contentCount"></span>
+      </div>
+      <div class="results" id="contentResults"></div>
+    </section>
+
+    <!-- ── Leads ────────────────────────────────────────────────── -->
+    <section class="panel" id="panel-leads" role="tabpanel" aria-labelledby="tab-leads">
+      <div class="toolbar">
+        <input class="input toolbar-search" type="search" id="leadsSearch" placeholder="Search username…">
+        <label class="kicker" for="leadsSort">Sort</label>
+        <select class="input" id="leadsSort">
+          <option value="score">Highest score</option>
+          <option value="recent">Most recent</option>
+        </select>
+        <span class="toolbar-count" id="leadsCount"></span>
+      </div>
+      <div class="toolbar">
+        <div class="chip-row" id="statusFilter">
+          <button class="chip" data-status="all" aria-pressed="true">All</button>
+          <button class="chip" data-status="new" aria-pressed="false">New</button>
+          <button class="chip" data-status="reviewed" aria-pressed="false">Reviewed</button>
+          <button class="chip" data-status="contacted" aria-pressed="false">Contacted</button>
+          <button class="chip" data-status="dismissed" aria-pressed="false">Dismissed</button>
+        </div>
+      </div>
+      <div class="results" id="leadsResults"></div>
+    </section>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+// ── State ────────────────────────────────────────────────────────
+
+let companyId = null;
+let matches = [];
+let leads = [];
+let statusFilter = 'all';
+const openSignals = new Map();   // leadId -> signal rows, or null while loading
+
+// ── Tabs ─────────────────────────────────────────────────────────
+
+document.querySelectorAll('.tab').forEach((tab) => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach((t) => t.setAttribute('aria-selected', String(t === tab)));
+    document.querySelectorAll('.panel').forEach((p) => {
+      p.classList.toggle('is-active', p.id === tab.getAttribute('aria-controls'));
+    });
+  });
+});
+
+// ── Content matches ──────────────────────────────────────────────
+
+function meterClass(score) {
+  if (score >= 75) return '';
+  if (score >= 50) return 'is-mid';
+  return 'is-low';
+}
+
+function scoreBlock(score) {
+  const value = Number(score) || 0;
+  return `
+    <div class="score">
+      <div class="score-value">${esc(Math.round(value))}<span>/100</span></div>
+      <div class="meter"><div class="meter-fill ${meterClass(value)}" style="width:${Math.max(0, Math.min(100, value))}%"></div></div>
+    </div>`;
+}
+
+async function loadMatches() {
+  el('contentResults').innerHTML = '<div class="empty"><p>Loading…</p></div>';
+  try {
+    matches = await api(`/api/matches?company_id=${encodeURIComponent(companyId)}`);
+    renderMatches();
+  } catch (err) {
+    el('contentResults').innerHTML = `<div class="empty"><h4>Couldn't load matches</h4><p>${esc(err.message)}</p></div>`;
+  }
+}
+
+function renderMatches() {
+  const container = el('contentResults');
+
+  if (!matches.length) {
+    el('contentCount').textContent = '';
+    container.innerHTML = `
+      <div class="empty">
+        <h4>No matches yet</h4>
+        <p>Run <code>python -m workers.ingest</code> to pull posts from your configured subreddits and score them.</p>
+      </div>`;
+    return;
+  }
+
+  const q = el('contentSearch').value.trim().toLowerCase();
+  let rows = matches.filter((m) => {
+    if (!q) return true;
+    const post = m.posts || {};
+    return [post.title, post.subreddit, post.author_username, m.ai_reasoning]
+      .some((f) => f && String(f).toLowerCase().includes(q));
+  });
+
+  const sort = el('contentSort').value;
+  rows = rows.slice().sort((a, b) => {
+    if (sort === 'score') return (b.intent_score || 0) - (a.intent_score || 0);
+    const ta = new Date((a.posts && a.posts.created_at) || a.created_at).getTime();
+    const tb = new Date((b.posts && b.posts.created_at) || b.created_at).getTime();
+    return sort === 'newest' ? tb - ta : ta - tb;
+  });
+
+  el('contentCount').textContent = `${rows.length} of ${matches.length}`;
+
+  if (!rows.length) {
+    container.innerHTML = '<div class="empty"><p>No matches fit that search.</p></div>';
+    return;
+  }
+
+  container.innerHTML = `<div class="result-list">${rows.map((m) => {
+    const post = m.posts || {};
+    return `
+      <article class="match">
+        <div class="match-head">
+          <div>
+            <h4 class="match-title">${esc(post.title) || '<em>untitled</em>'}</h4>
+            <div class="match-meta">r/${esc(post.subreddit) || '?'} · u/${esc(post.author_username) || 'unknown'} · ${esc(timeAgo(post.created_at))}</div>
+          </div>
+          ${scoreBlock(m.intent_score)}
+        </div>
+        ${m.ai_reasoning ? `<p class="match-reasoning">${esc(m.ai_reasoning)}</p>` : ''}
+        ${post.url ? `<div class="match-actions"><a class="btn btn-secondary" href="${esc(post.url)}" target="_blank" rel="noopener noreferrer">View on Reddit ↗</a></div>` : ''}
+      </article>`;
+  }).join('')}</div>`;
+}
+
+el('contentSearch').addEventListener('input', renderMatches);
+el('contentSort').addEventListener('change', renderMatches);
+
+// ── Leads ────────────────────────────────────────────────────────
+
+async function loadLeads() {
+  el('leadsResults').innerHTML = '<div class="empty"><p>Loading…</p></div>';
+  try {
+    leads = await api(`/api/leads?company_id=${encodeURIComponent(companyId)}`);
+    renderLeads();
+  } catch (err) {
+    el('leadsResults').innerHTML = `<div class="empty"><h4>Couldn't load leads</h4><p>${esc(err.message)}</p></div>`;
+  }
+}
+
+function signalsHtml(leadId) {
+  const rows = openSignals.get(leadId);
+  if (rows === null) return '<p class="text-muted" style="font-size:13px">Loading signals…</p>';
+  if (!rows.length) return '<p class="text-muted" style="font-size:13px">No signals recorded.</p>';
+
+  return rows.map((s) => {
+    const post = s.posts || {};
+    return `
+      <div class="signal">
+        <div class="signal-head">
+          ${s.competitor_mentioned ? `<span class="tag tag-accent">${esc(s.competitor_mentioned)}</span>` : ''}
+          ${s.switch_intent ? '<span class="tag tag-outline">switch intent</span>' : ''}
+          <span class="text-muted" style="font-size:11px">${esc(timeAgo(s.created_at))}</span>
+        </div>
+        ${s.pain_point ? `<div class="signal-quote"><strong>Pain point:</strong> ${esc(s.pain_point)}</div>` : ''}
+        ${s.ai_reasoning ? `<div class="signal-quote text-muted">${esc(s.ai_reasoning)}</div>` : ''}
+        ${post.url ? `<div style="margin-top:var(--space-2)"><a class="btn btn-ghost" href="${esc(post.url)}" target="_blank" rel="noopener noreferrer">${esc(post.title) || 'Source post'} ↗</a></div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+function renderLeads() {
+  const container = el('leadsResults');
+
+  if (!leads.length) {
+    el('leadsCount').textContent = '';
+    container.innerHTML = `
+      <div class="empty">
+        <h4>No leads yet</h4>
+        <p>Leads appear once a competitor-mode scanner finds someone talking about an alternative. Run <code>python -m workers.ingest</code> to populate this.</p>
+      </div>`;
+    return;
+  }
+
+  const q = el('leadsSearch').value.trim().toLowerCase();
+  let rows = leads.filter((l) => {
+    if (statusFilter !== 'all' && l.status !== statusFilter) return false;
+    return !q || (l.reddit_username || '').toLowerCase().includes(q);
+  });
+
+  const sort = el('leadsSort').value;
+  rows = rows.slice().sort((a, b) => (
+    sort === 'score'
+      ? (b.aggregate_score || 0) - (a.aggregate_score || 0)
+      : new Date(b.last_seen).getTime() - new Date(a.last_seen).getTime()
+  ));
+
+  el('leadsCount').textContent = `${rows.length} of ${leads.length}`;
+
+  if (!rows.length) {
+    container.innerHTML = '<div class="empty"><p>No leads fit that filter.</p></div>';
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>User</th><th>Score</th><th>Status</th><th>Last seen</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map((l) => {
+            const isOpen = openSignals.has(l.id);
+            return `
+              <tr class="${l._pending ? 'is-pending' : ''}">
+                <td><span class="lead-user">u/${esc(l.reddit_username)}</span></td>
+                <td class="is-tight">${scoreBlock(l.aggregate_score)}</td>
+                <td class="is-tight"><span class="tag ${l.status === 'new' ? 'tag-accent' : 'tag-neutral'}">${esc(l.status)}</span></td>
+                <td class="is-tight">${esc(timeAgo(l.last_seen))}</td>
+                <td class="is-tight">
+                  <div class="row-actions">
+                    <button class="btn btn-secondary" aria-pressed="${l.status === 'reviewed'}" ${l._pending ? 'disabled' : ''} data-action="status" data-id="${esc(l.id)}" data-status="reviewed">Reviewed</button>
+                    <button class="btn btn-secondary" aria-pressed="${l.status === 'contacted'}" ${l._pending ? 'disabled' : ''} data-action="status" data-id="${esc(l.id)}" data-status="contacted">Contacted</button>
+                    <button class="btn btn-secondary" aria-pressed="${l.status === 'dismissed'}" ${l._pending ? 'disabled' : ''} data-action="status" data-id="${esc(l.id)}" data-status="dismissed">Dismiss</button>
+                    <button class="btn btn-ghost" data-action="signals" data-id="${esc(l.id)}">${isOpen ? 'Hide' : 'Signals'}</button>
+                  </div>
+                </td>
+              </tr>
+              ${isOpen ? `<tr><td class="signals-cell" colspan="5"><div class="signals-inner">${signalsHtml(l.id)}</div></td></tr>` : ''}`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+// Delegated so the handlers survive every re-render.
+el('leadsResults').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-action]');
+  if (!btn) return;
+  if (btn.dataset.action === 'status') updateStatus(btn.dataset.id, btn.dataset.status);
+  if (btn.dataset.action === 'signals') toggleSignals(btn.dataset.id);
+});
+
+async function updateStatus(leadId, status) {
+  const lead = leads.find((l) => l.id === leadId);
+  if (!lead || lead._pending) return;
+
+  const previous = lead.status;
+  lead.status = status;          // optimistic
+  lead._pending = true;
+  renderLeads();
+
+  try {
+    await api(`/api/leads/${leadId}/status?status=${encodeURIComponent(status)}`, { method: 'PATCH' });
+  } catch (err) {
+    lead.status = previous;      // roll back
+    alert(`Couldn't update status: ${err.message}`);
+  } finally {
+    lead._pending = false;
+    renderLeads();
+  }
+}
+
+async function toggleSignals(leadId) {
+  if (openSignals.has(leadId)) {
+    openSignals.delete(leadId);
+    return renderLeads();
+  }
+
+  openSignals.set(leadId, null);   // null renders the loading state
+  renderLeads();
+
+  try {
+    openSignals.set(leadId, await api(`/api/leads/${leadId}/signals`));
+  } catch (err) {
+    openSignals.set(leadId, []);
+    alert(`Couldn't load signals: ${err.message}`);
+  }
+  renderLeads();
+}
+
+el('leadsSearch').addEventListener('input', renderLeads);
+el('leadsSort').addEventListener('change', renderLeads);
+
+el('statusFilter').addEventListener('click', (e) => {
+  const chip = e.target.closest('.chip');
+  if (!chip) return;
+  statusFilter = chip.dataset.status;
+  el('statusFilter').querySelectorAll('.chip').forEach((c) => {
+    c.setAttribute('aria-pressed', String(c === chip));
+  });
+  renderLeads();
+});
+
+// ── Init ─────────────────────────────────────────────────────────
+
+el('signOutBtn').addEventListener('click', () => {
+  session.signOut();
+  location.href = 'onboarding.html';
+});
+
+el('refreshBtn').addEventListener('click', () => {
+  openSignals.clear();
+  loadMatches();
+  loadLeads();
+});
+
+async function init() {
+  if (!session.isSignedIn()) {
+    el('signedOut').hidden = false;
+    el('refreshBtn').hidden = true;
+    el('signOutBtn').hidden = true;
+    return;
+  }
+
+  el('whoami').textContent = session.email();
+  el('dashboard').hidden = false;
+
+  try {
+    const companies = await api('/api/companies');
+    if (!companies || !companies.length) {
+      el('dashboard').hidden = true;
+      el('signedOut').hidden = false;
+      el('signedOut').querySelector('h3').textContent = 'No company set up yet.';
+      el('signedOut').querySelector('.section-desc').textContent =
+        'Finish onboarding to create your company and first scanner.';
+      return;
+    }
+    companyId = companies[0].id;
+    session.setCompanyId(companyId);
+    el('companyName').textContent = companies[0].name;
+  } catch (err) {
+    el('contentResults').innerHTML = `<div class="empty"><h4>Couldn't reach the backend</h4><p>${esc(err.message)}</p></div>`;
+    return;
+  }
+
+  loadMatches();
+  loadLeads();
+}
+
+init();
+</script>
+
+</body>
+</html>

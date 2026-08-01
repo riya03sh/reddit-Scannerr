@@ -100,6 +100,22 @@ def create_scanner_config(body: ScannerConfigCreate, user: dict = Depends(get_cu
     return result.data[0]
 
 
+@router.get("/scanner-configs")
+def list_scanner_configs(company_id: str, user: dict = Depends(get_current_user)):
+    """A company's scanner configs, most recently created first."""
+    sb = get_supabase()
+    ensure_owns_company(sb, company_id, user["id"])
+
+    return (
+        sb.table("scanner_configs")
+        .select("*")
+        .eq("company_id", company_id)
+        .order("created_at", desc=True)
+        .execute()
+        .data
+    )
+
+
 @router.get("/matches")
 def list_matches(company_id: str, user: dict = Depends(get_current_user)):
     """Content-mode matches for a company, most recent first, with the source post embedded."""
