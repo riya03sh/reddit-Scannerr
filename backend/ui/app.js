@@ -15,12 +15,13 @@ const LS = {
 };
 
 /*
- * Fixed to this one deployment: a single local backend talking to a single
+ * Fixed to this one deployment: one Railway-hosted backend talking to one
  * Supabase project. The anon key is Supabase's public, client-safe key (unlike
- * the service-role secret in backend/.env) - baking it in here is the same
- * trust level as shipping it in any other client-side bundle.
+ * the service-role secret, which only ever lives in Railway's env vars) -
+ * baking it in here is the same trust level as shipping it in any other
+ * client-side bundle.
  */
-const API_BASE = 'http://127.0.0.1:8000';
+const API_BASE = 'https://reddit-scanner-api-production.up.railway.app';
 const SUPABASE_URL = 'https://hlnrsashchwzzvbqqmch.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_77ybrddbVRazAuE_lHm89A_CX-AdPCb';
 
