@@ -4,7 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "python -m workers.ingest",
+    "startCommand": "python -u -m workers.ingest",
     "restartPolicyType": "NEVER"
   }
 }
