@@ -425,8 +425,43 @@ el('configForm').addEventListener('submit', async (e) => {
 
 // ── Init ─────────────────────────────────────────────────────────
 
+/* Supabase sends people back from the confirmation email with their session in
+ * the URL fragment (#access_token=...&refresh_token=...). Without this they'd
+ * land on a login form despite having just confirmed - and the tokens would sit
+ * unread in the address bar. Errors arrive the same way (#error_description=...),
+ * most commonly for an expired link. */
+function consumeAuthFragment() {
+  if (!window.location.hash) return false;
+  const params = new URLSearchParams(window.location.hash.slice(1));
+
+  const cleanUrl = () =>
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+
+  const error = params.get('error_description') || params.get('error');
+  if (error) {
+    cleanUrl();
+    setStatus(el('authStatus'), decodeURIComponent(error.replace(/\+/g, ' ')), 'error');
+    return false;
+  }
+
+  const token = params.get('access_token');
+  if (!token) return false;
+
+  session.signIn({
+    token,
+    refreshToken: params.get('refresh_token'),
+    email: emailFromToken(token) || session.email(),
+  });
+  cleanUrl();                 // don't leave tokens sitting in the address bar
+  return true;
+}
+
 syncModeFields();
-if (session.isSignedIn()) onSignedIn();
+const justConfirmed = consumeAuthFragment();
+if (session.isSignedIn()) {
+  onSignedIn();
+  if (justConfirmed) setStatus(el('authStatus'), 'Email confirmed — you\'re signed in.', 'ok');
+}
 </script>
 
 </body>

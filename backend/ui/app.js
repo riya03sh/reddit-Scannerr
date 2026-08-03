@@ -186,8 +186,33 @@ async function supabaseAuth(endpoint, email, password) {
   return data;
 }
 
+/* Where Supabase sends people after they click the confirmation email.
+ * Without an explicit redirect_to, Supabase falls back to the project's Site URL
+ * - which defaults to http://localhost:3000 and stranded every real signup there.
+ * Derived from the current origin so local dev and the deployed site each send
+ * people back to themselves. Supabase only honours this if the URL is listed
+ * under Authentication -> URL Configuration -> Redirect URLs. */
+function emailRedirectTo() {
+  return `${window.location.origin}/onboarding.html`;
+}
+
+/** Read the email claim out of a Supabase access token, for display only.
+ *  Used when a session arrives via the confirmation-email redirect, where the
+ *  fragment carries tokens but no email. Not a security check - the backend
+ *  independently validates every token it's given. */
+function emailFromToken(token) {
+  try {
+    const payload = token.split('.')[1];
+    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(json).email || '';
+  } catch {
+    return '';
+  }
+}
+
 const auth = {
-  signUp: (email, password) => supabaseAuth('/auth/v1/signup', email, password),
+  signUp: (email, password) => supabaseAuth(
+    `/auth/v1/signup?redirect_to=${encodeURIComponent(emailRedirectTo())}`, email, password),
   logIn: (email, password) => supabaseAuth('/auth/v1/token?grant_type=password', email, password),
 };
 
