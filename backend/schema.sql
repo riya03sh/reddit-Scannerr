@@ -80,6 +80,19 @@ create table if not exists lead_signals (
 
 create index if not exists idx_lead_signals_lead on lead_signals(lead_id);
 
+-- Leads originally came only from competitor mode, but that fires only when someone
+-- names a competitor - rare outside brand-heavy categories (1 lead per 400 posts on
+-- an analytics product, vs 11 for fashion). High-intent content matches describe the
+-- same buying signal and carry a reddit username, so they now become leads too.
+-- 'competitor' as the default keeps every pre-existing row correct.
+alter table lead_signals add column if not exists source text not null default 'competitor'
+    check (source in ('competitor', 'content'));
+-- Set for content-sourced signals; competitor signals keep their own 0-100 score on
+-- the parent lead's aggregate_score.
+alter table lead_signals add column if not exists intent_score numeric;
+-- One signal per post per source, so re-runs top up a lead instead of duplicating it.
+create unique index if not exists idx_lead_signals_unique on lead_signals(lead_id, post_id, source);
+
 -- Competitor-mode dedupe ledger. Competitor mode discards posts with no competitor
 -- signal, so there's no row to dedupe against the way content_matches serves content
 -- mode - every scheduled run would otherwise re-classify the same posts indefinitely.

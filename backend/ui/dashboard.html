@@ -199,8 +199,10 @@ function signalsHtml(leadId) {
     return `
       <div class="signal">
         <div class="signal-head">
+          <span class="tag tag-neutral">${s.source === 'content' ? 'buying intent' : 'competitor'}</span>
           ${s.competitor_mentioned ? `<span class="tag tag-accent">${esc(s.competitor_mentioned)}</span>` : ''}
           ${s.switch_intent ? '<span class="tag tag-outline">switch intent</span>' : ''}
+          ${s.intent_score ? `<span class="tag tag-outline">${esc(Math.round(s.intent_score))}/100</span>` : ''}
           <span class="text-muted" style="font-size:11px">${esc(timeAgo(s.created_at))}</span>
         </div>
         ${s.pain_point ? `<div class="signal-quote"><strong>Pain point:</strong> ${esc(s.pain_point)}</div>` : ''}
@@ -218,7 +220,7 @@ function renderLeads() {
     container.innerHTML = `
       <div class="empty">
         <h4>No leads yet</h4>
-        <p>Leads appear once a competitor-mode scanner finds someone talking about an alternative. Run <code>python -m workers.ingest</code> to populate this.</p>
+        <p>Leads are people worth contacting — either a strong buying-intent match from a content scanner, or someone a competitor scanner caught discussing an alternative. Run <code>python -m workers.ingest</code> to populate this.</p>
       </div>`;
     return;
   }

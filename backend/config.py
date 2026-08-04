@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     # slower and wants ~4s. Local Ollama needs no throttle at all.
     llm_request_interval_seconds: float = 2.0
 
+    # Content matches at or above this 0-100 intent score also become leads, on top
+    # of whatever competitor mode finds. Set above the typical scanner's
+    # min_score_threshold (which only decides what's worth showing at all) so the
+    # lead list stays a shortlist of people worth contacting, not every match.
+    lead_score_threshold: float = 80.0
+
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",
         env_file_encoding="utf-8",
