@@ -93,10 +93,19 @@ alter table lead_signals add column if not exists intent_score numeric;
 -- One signal per post per source, so re-runs top up a lead instead of duplicating it.
 create unique index if not exists idx_lead_signals_unique on lead_signals(lead_id, post_id, source);
 
--- Competitor-mode dedupe ledger. Competitor mode discards posts with no competitor
--- signal, so there's no row to dedupe against the way content_matches serves content
--- mode - every scheduled run would otherwise re-classify the same posts indefinitely.
-create table if not exists competitor_checks (
+-- Dedupe ledger: every (config, post) pair the LLM has already judged, for BOTH
+-- modes. Neither mode can infer this from its output table, because both discard
+-- negatives - competitor mode stores nothing when no competitor is named, and
+-- content mode stores nothing below min_score_threshold. Without this, each
+-- scheduled run re-classified every previously-rejected post forever: measured at
+-- 638 wasted calls per run on a live install, more tokens per day than the whole
+-- free-tier allowance, spent re-confirming the same rejections.
+--
+-- Originally added for competitor mode only, hence the old name.
+alter table if exists competitor_checks rename to classified_posts;
+alter index if exists idx_competitor_checks_config rename to idx_classified_posts_config;
+
+create table if not exists classified_posts (
     id uuid primary key default uuid_generate_v4(),
     config_id uuid not null references scanner_configs(id) on delete cascade,
     post_id uuid not null references posts(id) on delete cascade,
@@ -104,7 +113,7 @@ create table if not exists competitor_checks (
     unique(config_id, post_id)
 );
 
-create index if not exists idx_competitor_checks_config on competitor_checks(config_id);
+create index if not exists idx_classified_posts_config on classified_posts(config_id);
 
 -- ---------- Auth: associate a company with the Supabase Auth user who owns it ----------
 -- Run this in the Supabase SQL editor against an existing database to add

@@ -74,6 +74,28 @@ def _upsert_post(sb, post: dict) -> str:
     return result.data[0]["id"]
 
 
+def _already_classified(sb, config_id: str, post_id: str) -> bool:
+    """Has this config already had the LLM judge this post?
+
+    Both modes discard negatives (no competitor named / below the score
+    threshold), so neither can tell from its own output table whether a post was
+    already seen and rejected. This ledger is the only record.
+    """
+    return bool(
+        sb.table("classified_posts").select("id")
+        .eq("config_id", config_id).eq("post_id", post_id).execute().data
+    )
+
+
+def _record_classified(sb, config_id: str, post_id: str) -> None:
+    """Record the judgement immediately after it happens, whatever the verdict,
+    so an interrupted run (rate limit, crash) doesn't redo work on the retry."""
+    sb.table("classified_posts").upsert(
+        {"config_id": config_id, "post_id": post_id},
+        on_conflict="config_id,post_id",
+    ).execute()
+
+
 def _upsert_lead(sb, company_id: str, username: str, score) -> str:
     """Create the lead for this reddit user, or refresh an existing one.
 
@@ -110,9 +132,11 @@ def run_content_mode(sb, config: dict, company: dict):
 
             post_id = _upsert_post(sb, post)
 
-            # skip if already classified for this config
-            already = sb.table("content_matches").select("id").eq("post_id", post_id).eq("config_id", config["id"]).execute()
-            if already.data:
+            # Skip anything this config has already had judged. Checking
+            # content_matches instead would only skip posts that scored above the
+            # threshold - every rejected post would come back to the LLM on every
+            # run, forever.
+            if _already_classified(sb, config["id"], post_id):
                 continue
 
             try:
@@ -127,6 +151,8 @@ def run_content_mode(sb, config: dict, company: dict):
                     raise DailyQuotaReached(str(e)) from e
                 raise
             time.sleep(settings.llm_request_interval_seconds)
+            _record_classified(sb, config["id"], post_id)
+
             score = result["intent_score"]
             if score / 100 >= config["min_score_threshold"]:
                 sb.table("content_matches").insert({
@@ -166,20 +192,8 @@ def run_competitor_mode(sb, config: dict, company: dict):
             if not matches_competitor_signal(post["title"], post["body"], config["competitors"]):
                 continue
 
-            # Store the post and record the check BEFORE classifying. Unlike content
-            # mode - which can dedupe off content_matches because every classified post
-            # leaves a row - competitor mode discards negatives, so without its own
-            # ledger every scheduled run would re-send the same posts to the LLM
-            # forever. competitor_checks is that ledger.
             post_id = _upsert_post(sb, post)
-            already = (
-                sb.table("competitor_checks")
-                .select("id")
-                .eq("config_id", config["id"])
-                .eq("post_id", post_id)
-                .execute()
-            )
-            if already.data:
+            if _already_classified(sb, config["id"], post_id):
                 continue
 
             try:
@@ -196,10 +210,7 @@ def run_competitor_mode(sb, config: dict, company: dict):
                 raise
             time.sleep(settings.llm_request_interval_seconds)
 
-            sb.table("competitor_checks").insert({
-                "config_id": config["id"],
-                "post_id": post_id,
-            }).execute()
+            _record_classified(sb, config["id"], post_id)
 
             if not result["competitor_mentioned"]:
                 continue  # no competitor signal in this post - don't bother storing it
