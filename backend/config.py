@@ -19,10 +19,18 @@ class Settings(BaseSettings):
     llm_provider: str = "gemini"
     groq_api_key: str = ""
     groq_model: str = "llama-3.1-8b-instant"
-    # Competitor mode gets a bigger/slower model: lower volume (fewer subreddits,
-    # no keyword pre-filter) can absorb the cost, and testing showed the small
-    # instant model hallucinating competitor mentions even after prompt tightening.
-    groq_competitor_model: str = "llama-3.3-70b-versatile"
+    # Competitor mode used the 70B model because the small one was hallucinating
+    # competitor mentions. That no longer reproduces now COMPETITOR_MODE_PROMPT
+    # spells out what does and doesn't count as signal: re-tested against posts
+    # the 70B had already judged, the 8B invented nothing across 8 known
+    # negatives, though it did miss 2 of 6 real mentions.
+    #
+    # It runs on the 8B now because the 70B's 100k/day free-tier token allowance
+    # couldn't cover a competitor pass over a few hundred posts - it exhausted
+    # the budget and took the whole scheduled run down with it. Missing some
+    # signal beats the pipeline not running. Point this back at
+    # llama-3.3-70b-versatile on a paid tier.
+    groq_competitor_model: str = "llama-3.1-8b-instant"
     ollama_model: str = "llama3.1"
 
     # Gap between LLM calls in the ingestion worker, to stay under free-tier
