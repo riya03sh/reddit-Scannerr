@@ -81,9 +81,22 @@
           <span class="kicker" id="badgeCompany">02</span>
           <h3 style="margin:0">What are you selling?</h3>
         </div>
-        <p class="section-desc">This description is fed to the model on every post it scores — it's how the AI judges whether a post shows real buying intent or is just category chatter. Be specific.</p>
+        <p class="section-desc">Paste your website and we'll read it, then propose the subreddits and keywords to watch — checking each suggestion against live Reddit before offering it.</p>
 
         <div class="form-narrow">
+          <form id="analyzeForm" novalidate>
+            <div class="field">
+              <label for="siteUrl">Website URL</label>
+              <div style="display:flex; gap:var(--space-2)">
+                <input class="input" type="url" id="siteUrl" placeholder="https://yourproduct.com" spellcheck="false" required style="flex:1">
+                <button class="btn btn-primary" type="submit" id="analyzeBtn" style="flex:none">Analyze</button>
+              </div>
+              <p class="hint">Takes up to a minute — most of it is checking that each suggested subreddit is real and still active.</p>
+            </div>
+          </form>
+          <div class="status" id="analyzeStatus" role="status"></div>
+          <div id="analyzeReport"></div>
+
           <form id="companyForm" novalidate>
             <div class="field">
               <label for="companyName">Company name</label>
@@ -285,6 +298,67 @@ function onCompanyReady(message) {
   setStatus(el('companyStatus'), message, 'ok');
   reveal('config');
   loadConfigs();
+}
+
+// ── Analyze a website into a proposed setup ──────────────────────
+
+let suggestion = null;
+
+el('analyzeForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const url = el('siteUrl').value.trim();
+  if (!url) return setStatus(el('analyzeStatus'), 'Enter your website URL first.', 'error');
+
+  const btn = el('analyzeBtn');
+  btn.disabled = true;
+  el('analyzeReport').innerHTML = '';
+  setStatus(el('analyzeStatus'), 'Reading your site and checking subreddits against live Reddit…', 'info');
+
+  try {
+    suggestion = await api('/api/suggest', { method: 'POST', body: JSON.stringify({ url }) });
+    applySuggestion(suggestion);
+    setStatus(el('analyzeStatus'), '');
+  } catch (err) {
+    setStatus(el('analyzeStatus'), err.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+function applySuggestion(s) {
+  if (s.company_name && !el('companyName').value) el('companyName').value = s.company_name;
+  if (s.product_description && !el('companyDesc').value) el('companyDesc').value = s.product_description;
+
+  const subs = (s.subreddits || []).map((x) => x.name);
+  el('configSubreddits').value = subs.join(', ');
+  el('configKeywords').value = (s.keywords || []).join(', ');
+  el('configCompetitors').value = (s.competitors || []).join(', ');
+
+  const g = s.keyword_grading || {};
+  const rate = g.pass_rate === null || g.pass_rate === undefined ? null : Math.round(g.pass_rate * 100);
+  // Surfaced because a keyword set matching almost nothing is invisible until a
+  // week of empty results has gone by.
+  const verdict = rate === null ? ''
+    : rate < 3 ? `<span class="tag tag-accent">only ${rate}% of posts match — widen these</span>`
+    : `<span class="tag tag-outline">${rate}% of live posts match</span>`;
+
+  const rejected = s.rejected_subreddits || [];
+  el('analyzeReport').innerHTML = `
+    <div class="hr"></div>
+    <div class="kicker" style="margin-bottom:var(--space-2)">Checked against live Reddit</div>
+    <p class="hint" style="margin-top:0">
+      Kept <strong>${subs.length}</strong> subreddit${subs.length === 1 ? '' : 's'} with a live audience${
+        rejected.length ? `, dropped <strong>${rejected.length}</strong>` : ''}.
+      ${verdict}
+    </p>
+    ${rejected.length ? `
+      <details class="hint" style="margin-top:var(--space-2)">
+        <summary style="cursor:pointer">Why ${rejected.length} were dropped</summary>
+        <ul style="margin:var(--space-2) 0 0; padding-left:var(--space-4)">
+          ${rejected.map((r) => `<li>r/${esc(r.name)} — ${esc(r.reason)}</li>`).join('')}
+        </ul>
+      </details>` : ''}
+    <p class="hint">Everything below is pre-filled and editable — change anything before saving.</p>`;
 }
 
 el('companyForm').addEventListener('submit', async (e) => {

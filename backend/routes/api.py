@@ -100,6 +100,27 @@ def create_scanner_config(body: ScannerConfigCreate, user: dict = Depends(get_cu
     return result.data[0]
 
 
+class SuggestRequest(BaseModel):
+    url: str = Field(min_length=4)
+
+
+@router.post("/suggest")
+def suggest_scanner(body: SuggestRequest, user: dict = Depends(get_current_user)):
+    """Read a product's website and propose a scanner setup for it.
+
+    Suggestions are checked against live Reddit before being returned - dead or
+    misspelled subreddits are dropped, and the keywords come back with the
+    fraction of real posts they actually select, so a useless set is visible
+    before it's saved rather than after a week of empty results.
+    """
+    from services.suggest import suggest_from_url, SuggestionError
+
+    try:
+        return suggest_from_url(body.url.strip())
+    except SuggestionError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
 @router.get("/scanner-configs")
 def list_scanner_configs(company_id: str, user: dict = Depends(get_current_user)):
     """A company's scanner configs, most recently created first."""
