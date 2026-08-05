@@ -342,9 +342,19 @@ function applySuggestion(s) {
     : rate < 3 ? `<span class="tag tag-accent">only ${rate}% of posts match — widen these</span>`
     : `<span class="tag tag-outline">${rate}% of live posts match</span>`;
 
+  // Many real sites can't be read server-side (JS-only pages, CDN bot checks), so
+  // the description may be the model's recollection rather than the live page. The
+  // description drives every post score, so a guess needs saying out loud.
+  const provenance = {
+    website: '',
+    model_knowledge: `<p class="hint" style="margin-top:var(--space-2)"><strong>Note:</strong> your site couldn't be read automatically, so this is from what the model already knows about your company. Check the description before saving.</p>`,
+    domain_guess: `<div class="status status-error" style="margin-top:var(--space-2)"><strong>Check this carefully.</strong> Your site couldn't be read and the model didn't recognise the domain, so the description below is inferred from the name alone. Rewrite it in your own words — every post score depends on it.</div>`,
+  }[s.source] || '';
+
   const rejected = s.rejected_subreddits || [];
   el('analyzeReport').innerHTML = `
     <div class="hr"></div>
+    ${provenance}
     <div class="kicker" style="margin-bottom:var(--space-2)">Checked against live Reddit</div>
     <p class="hint" style="margin-top:0">
       Kept <strong>${subs.length}</strong> subreddit${subs.length === 1 ? '' : 's'} with a live audience${
