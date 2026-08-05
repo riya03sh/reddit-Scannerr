@@ -5,6 +5,7 @@
   },
   "deploy": {
     "startCommand": "python -u -m workers.ingest",
-    "restartPolicyType": "NEVER"
+    "restartPolicyType": "NEVER",
+    "cronSchedule": "0 */12 * * *"
   }
 }
